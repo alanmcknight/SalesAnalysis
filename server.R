@@ -18,7 +18,7 @@ server = function(input, output) {
       #my_data$ResponseSqRoot <- sqrt(my_data$Response + 1)
     })
     #my_data
-    y <- count(my_data, "Site.Name.1")
+    y <- count(my_data, c("Site.Name.1", "Site.Name.2" ))
     y
     #ProviderInsurer <- cast(y, Site.Name.1 ~ Insurer.1)
     #ProviderInsurer
@@ -52,8 +52,8 @@ server = function(input, output) {
       input$Load3
       my_data3 <- read.csv(inFile$datapath, header = TRUE, stringsAsFactors =FALSE)
     })
-  my_data2 <- subset(my_data3[,1:6], Site.Name.1 == input$insurance.provider)
-  my_data2
+    my_data2 <- subset(my_data3[,1:6], Site.Name.1 == input$insurance.provider)
+    my_data2
   })
   
   output$my_output_data <- renderTable({data1()},include.rownames=FALSE)  
@@ -72,7 +72,7 @@ server = function(input, output) {
          probability = TRUE,
          breaks = as.numeric(input$n_breaks),
          xlab = "Policy Price",
-         main = "Policy Price")
+         main = "Policy Price (£)")
     
 #    if (input$individual_obs) {
 #     rug(faithful$eruptions)
