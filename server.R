@@ -1,3 +1,8 @@
+install.packages('plyr')
+library(plyr)
+install.packages('reshape')
+library(reshape)
+
 server = function(input, output) {
   
   data1 <- reactive({
