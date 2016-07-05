@@ -1,19 +1,33 @@
+#insurance.providers <- read.csv('ApricotJan151.csv')
 ui = fluidPage(
+  
+navbarPage(
+    title = 'Pricing Analysis Tool',
+    tabPanel('Data Upload and Filtering',     NULL),
+    tabPanel('Graphs',        NULL),
+    tabPanel('Maps',  NULL)
+  ),
+  
   sidebarPanel(
-    fileInput('file1', 'Choose file to upload',accept = c('text/csv','text/comma-separated-values','text/tab-separated-values','text/plain','.csv','.tsv')),
-    p('If you want a sample .csv file to upload,',
-      'you can first download the sample',
-      a(href = 'ApricotJan151.csv', 'ExampleBroker.csv'),' and then try adding to and uploading this.'
+    h3("Step 1: Select file to upload"),
+    p('Please view our sample .csv file,',
+    a(href = 'ApricotJan151.csv', 'SamplePricing.csv')
     ),
-    checkboxInput('header', 'Header', TRUE),
-    radioButtons('sep', 'Separator',
-                 c(Comma=',',
-                   Semicolon=';',
-                   Tab='\t'),
-                 ','),
-    radioButtons('quote', 'Quote',c(None='','Double Quote'='"','Single Quote'="'"),'Double Quote'),
-    actionButton("Load", "View Data"), 
-    downloadButton('downloadData', 'Download Summary Report'),width = 5
+    fileInput('file1', NULL,accept = c('text/csv','text/comma-separated-values','text/tab-separated-values','text/plain','.csv','.tsv')),
+    h3("Step 2: View Insurance Providers summary"),
+    actionButton("Load", "View Upload Summary"), 
+    h3("Step 3: Select the Insurance Provider to review"),
+    textInput("insurance.provider", "Insurance Provider:", "Insurance Provider as shown in the Upload Summary"),
+    #tableOutput("my_output_data"),
+    #checkboxInput('header', 'Header', TRUE),
+    #actionButton("Load", "View Data"), 
+    actionButton("Load3", "View Position 1 Analysis"),
+    selectInput(inputId = "n_breaks",
+                label = "Number of bins in histogram (approximate):",
+                choices = c(10, 20, 35, 50),
+                selected = 20),
+    downloadButton('downloadData', 'Download Summary Report'),
+    width = 12
 ), 
-  mainPanel(tableOutput("my_output_data"))
+  mainPanel(tableOutput("my_output_data3"), tableOutput("my_output_data"), plotOutput(outputId = "main_plot", height = "300px"))
 )
