@@ -3,7 +3,7 @@ ui = fluidPage(
   
 navbarPage(
     title = 'Pricing Analysis Tool',
-    tabPanel('Data Upload and Filtering',   sidebarPanel(
+    tabPanel('Data Upload and Standard Reporting',   sidebarPanel(
       h3("Step 1: Select file to upload"),
       p('Please view our sample .csv file,',
         a(href = 'ApricotJan151.csv', 'SamplePricing.csv')
@@ -12,11 +12,13 @@ navbarPage(
       h3("Step 2: View Insurance Providers summary"),
       actionButton("Load", "View Upload Summary"), 
       h3("Step 3: Select the Insurance Provider to review"),
-      textInput("insurance.provider", "Insurance Provider:", "Insurance Provider as shown in the Upload Summary"),
+      textInput("insurance.provider", "Insurance Provider:", "Type the Insurance Provider Name here..."),
       #tableOutput("my_output_data"),
       #checkboxInput('header', 'Header', TRUE),
       #actionButton("Load", "View Data"), 
-      actionButton("Load3", "View Position 1 Analysis"),
+      actionButton("Load3", "Position 1 Analysis"),
+#      actionButton("Load4", "View Position 1 Analysis 2"),
+      downloadButton("downloadData4", "All Position Analysis"),
       downloadButton('downloadData', 'Download Summary Report'),
       width = 12
     ), 
