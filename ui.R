@@ -1,36 +1,36 @@
-#insurance.providers <- read.csv('ApricotJan151.csv')
+library(leaflet)
 ui = fluidPage(
   
 navbarPage(
     title = 'Pricing Analysis Tool',
-    tabPanel('Data Upload and Standard Reporting',   sidebarPanel(
-      h3("Step 1: Select file to upload"),
-      p('Please view our sample .csv file,',
-        a(href = 'ApricotJan151.csv', 'SamplePricing.csv')
-      ),
-      fileInput('file1', NULL,accept = c('text/csv','text/comma-separated-values','text/tab-separated-values','text/plain','.csv','.tsv')),
-      h3("Step 2: View Insurance Providers summary"),
-      actionButton("Load", "View Upload Summary"), 
-      h3("Step 3: Select the Insurance Provider to review"),
-      textInput("insurance.provider", "Insurance Provider:", "Type the Insurance Provider Name here..."),
-      #tableOutput("my_output_data"),
-      #checkboxInput('header', 'Header', TRUE),
-      #actionButton("Load", "View Data"), 
-      actionButton("Load3", "Position 1 Analysis"),
-#      actionButton("Load4", "View Position 1 Analysis 2"),
-      downloadButton("downloadData4", "All Position Analysis"),
-      downloadButton('downloadData', 'Download Summary Report'),
-      width = 12
-    ), 
-    mainPanel(tableOutput("my_output_data3"), tableOutput("my_output_data"))),
-    tabPanel('Graphs',  
+    tabPanel('Top 3 Projections',   
              sidebarPanel(
-               selectInput(inputId = "n_breaks",
-                         label = "Number of Groups:",
-                         choices = c(10, 20, 50, 100),
-                         selected = 20)
-             ),
-             mainPanel( plotOutput(outputId = "main_plot", height = "300px"))),
-    tabPanel('Maps',  NULL)
-  )
+               sliderInput("integer", "Adjust price by (£):", 
+                           min=-100, max=-5, value=-20, step= 5), 
+               htmlOutput("selectUI"), width = 8), 
+             mainPanel(h3("Overall"),
+                       fluidRow(column(dataTableOutput(outputId ="my_output_data5"), width =8)), 
+                       br(),
+                       h3("Top1s by filter criteria"),
+                       fluidRow(column(dataTableOutput(outputId ="my_output_data7"), width =8)))
+    ),
+    tabPanel(
+      'Graphs',  
+      sidebarPanel(
+        sliderInput("integer2", "Adjust price by (£):", 
+                    min=-100, max=-5, value=-20, step= 5), 
+        htmlOutput("selectUI2"), width = 8), 
+      mainPanel(
+             fluidPage( 
+              downloadButton("downloadData4", "Download Quote Results Position Report"),
+              plotOutput(outputId = "main_plot1", width = "100%", height = "300px" ),
+              br(),
+              downloadButton("downloadData8", "Download Adjusted Price Quote Results Position Report"),
+              plotOutput(outputId = "main_plot2", width = "100%", height = "300px")
+             ))),
+    tabPanel('Maps',  fluidPage(
+      leafletOutput("mymap", height = "800px"),
+      p()
+    ))
+)
 )
