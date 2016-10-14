@@ -1,40 +1,37 @@
 library(leaflet)
+library(shiny)
+library(plotly)
+
 ui = fluidPage(
   
 navbarPage(
-    title = "Pricing Analysis Tool",
-    tabPanel('Top 3 Projections',   
+    title = "Sales Analysis Tool",
+    tabPanel('Apricot Sales Performance',   
              sidebarPanel(
-               selectInput("filterName1", "Select Insurer to review", choices = c("ABC Insurance", "AXA Insurance", "Chaucer Insurance", "Covea", "Highway Insurance", "Sabre Insurance", "Zenith Marque")),
-               sliderInput("integer", "Adjust price by (£):", 
-                           min=-100, max=50, value=-20, step= 5), 
-               htmlOutput("selectUI"), width = 8), 
-             mainPanel(h3("Overall"),
-                       fluidRow(column(dataTableOutput(outputId ="my_output_data5"), width =8)), 
-                       br(),
-                       h3("Top 1s by filter criteria"),
-                       fluidRow(column(dataTableOutput(outputId ="my_output_data7"), width =8)),
-                       br(),
-                       h3("Panel Sales by filter criteria"),
-                       fluidRow(column(dataTableOutput(outputId ="my_output_data10"),width =8)))
-    ),
-    tabPanel(
-      'Graphs',  
-      sidebarPanel(
-        sliderInput("integer2", "Adjust price by (£):", 
-                    min=-100, max=-5, value=0, step= 5), 
-        htmlOutput("selectUI2"), width = 8), 
-      mainPanel(
-             fluidPage( 
-              downloadButton("downloadData4", "Download Quote Results Position Report"),
-              plotOutput(outputId = "main_plot1", width = "100%", height = "300px" ),
-              br(),
-              downloadButton("downloadData8", "Download Adjusted Price Quote Results Position Report"),
-              plotOutput(outputId = "main_plot2", width = "100%", height = "300px")
-             ))),
-    tabPanel('Maps',  fluidPage(
-      leafletOutput("mymap", height = "800px"),
-      p()
-    ))
+               dateRangeInput('dateRange',
+                              label = 'Sale Date range (yyyy-mm-dd): ',
+                              start = "2016-08-01", end = Sys.Date()
+               ),
+               br(),
+               dataTableOutput(outputId ="my_output_data6"),width = 6),
+             mainPanel(
+               selectizeInput("dataset3", "Select data breakdown criteria", choices = c("Age", "Age.Range", "Apricot.Position", "BTXDatecreated", "BTXInsurer", "BTXPoltype", "BTXTrantype", "Day.of.Week", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "Email.Domain", "Employment.Status", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Licence.Years", "Price.Returned.Range", "Postcode.Area", "Postcode.Region", "Proposer.Claims.Count", "Proposer.Convictions.Count", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like."),
+                 multiple = TRUE, options = list(maxItems = 2)),
+                        fluidRow(column(
+                          selectInput("plotFilter", "Select Performance Metric", choices = c("Average Gross Profit per Sale (£)", "Cancellations", "Gross Profit (£)", "Sales Cancellation Percentage", "Sales")),
+                          plotlyOutput("dailyPlot2"),
+                          br(),
+                          br(),
+                          dataTableOutput(outputId ="my_output_data8"), width =10), width = 12),
+               br(),
+               downloadButton("downloadData", "Download Sales Report"),           
+               br(),
+               br(),
+               br(),
+               br(),
+               br(),
+               br())
+
+    )
 )
 )
