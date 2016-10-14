@@ -7,7 +7,7 @@ library(plotly)
 
 server = function(input, output, session) {
   
-  my_data <- read.csv("ApricotSalesMaster3.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  my_data <- read.csv("ApricotSalesMaster1.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
   
   filterList1 <- colnames(my_data) 
@@ -25,13 +25,16 @@ server = function(input, output, session) {
   })
   
   data6 <- reactive({
-    my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
-    Totals <- data.frame(matrix(NA, nrow = 1, ncol = 4))
-    colnames(Totals) <- c("Sales", "Cancellations", "Cancellation Percentage", "Profit")
-    Totals[1,1] <- nrow(subset(my_data1, Cancellation == "N"))
-    Totals[1,2] <- nrow(subset(my_data1, Cancellation == "Cancellation"))
-    Totals[1,3] <- percent(as.numeric(Totals[1,2])/(as.numeric(Totals[1,1]) + as.numeric(Totals[1,2])))
-    Totals[1,4] <- currency(sum(as.numeric(my_data1$TotalValue)))
+    my_data1 <- data()
+    my_data2 <- subset(my_data1, BTXPaydt != "")
+    Totals <- data.frame(matrix(NA, nrow = 1, ncol = 6))
+    colnames(Totals) <- c("New Business", "Renewals", "Policies to be Renewed", "Cancellations", "Cancellation Percentage", "Profit")
+    Totals[1,1] <- nrow(subset(my_data2, Cancellation == "N" & BTXTrantype == "New Business"))
+    Totals[1,2] <- nrow(subset(my_data2, Cancellation == "N" & BTXTrantype == "Renewal"))
+    Totals[1,3] <- nrow(subset(my_data1, BTXPaydt == ""))
+    Totals[1,4] <- nrow(subset(my_data2, Cancellation == "Cancellation"))
+    Totals[1,5] <- percent(as.numeric(Totals[1,4])/(as.numeric(Totals[1,1]) + as.numeric(Totals[1,2] + as.numeric(Totals[1,4]))))
+    Totals[1,6] <- currency(sum(as.numeric(my_data2$TotalValue)))
     Totals
   })
   
@@ -45,7 +48,7 @@ server = function(input, output, session) {
   
   data8 <- reactive({
     if(length(input$dataset3) == 1){
-      my_data1 <- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2])
+      my_data1 <- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2] & BTXPaydt != "")
       #if(input$filterName2 == 0){return()}
       #if(is.null(input$filterName2)) return(NULL)
       Profit <- aggregate(as.numeric(my_data1$TotalValue), by=list(Category=my_data1[[input$dataset3[1]]]), FUN=sum)
@@ -70,7 +73,7 @@ server = function(input, output, session) {
       Profit
     } else {
     if(length(input$dataset3) == 2){
-    my_data1 <- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2])
+    my_data1 <- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2] & BTXPaydt != "")
     Profit <- aggregate(as.numeric(my_data1$TotalValue) ~ my_data1[[input$dataset3[1]]] + my_data1[[input$dataset3[2]]], my_data1, FUN=sum)
     Sales <- my_data1[ which(my_data1$Cancellation=='N'),]
     CountSales <- aggregate(as.numeric(Sales$TotalValue) ~ Sales[[input$dataset3[1]]] + Sales[[input$dataset3[2]]], Sales, FUN=length)
@@ -101,7 +104,7 @@ server = function(input, output, session) {
   
   data9 <- reactive({
     if(length(input$dataset3) > 0){  
-    my_data9<- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2])
+    my_data9<- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2] & BTXPaydt != "")
       #if(input$filterName2 == 0){return()}
       #if(is.null(input$filterName2)) return(NULL)
       Profit <- aggregate(as.numeric(my_data9$TotalValue), by=list(Category=my_data9[[input$dataset3[1]]]), FUN=sum)
