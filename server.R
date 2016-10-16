@@ -71,8 +71,7 @@ server = function(input, output, session) {
       Profit <- Profit[order(Profit[2]),] 
       Profit[is.na(Profit)] <- 0
       Profit
-    } else {
-    if(length(input$dataset3) == 2){
+    } else if(length(input$dataset3) == 2){
     my_data1 <- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2] & BTXPaydt != "")
     Profit <- aggregate(as.numeric(my_data1$TotalValue) ~ my_data1[[input$dataset3[1]]] + my_data1[[input$dataset3[2]]], my_data1, FUN=sum)
     Sales <- my_data1[ which(my_data1$Cancellation=='N'),]
@@ -98,8 +97,36 @@ server = function(input, output, session) {
     names(Summary)[7]<-"Average Gross Profit per Sale (£)"
     Summary <- Summary[order(Summary[3]),] 
     Summary
-    
-    }}
+    } else if(length(input$dataset3) == 3){
+        my_data1 <- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2] & BTXPaydt != "")
+        Profit <- aggregate(as.numeric(my_data1$TotalValue) ~ my_data1[[input$dataset3[1]]] + my_data1[[input$dataset3[2]]]+ my_data1[[input$dataset3[3]]], my_data1, FUN=sum)
+        Sales <- my_data1[ which(my_data1$Cancellation=='N'),]
+        CountSales <- aggregate(as.numeric(Sales$TotalValue) ~ Sales[[input$dataset3[1]]] + Sales[[input$dataset3[2]]] + Sales[[input$dataset3[3]]], Sales, FUN=length)
+        Cancellations <- my_data1[ which(my_data1$Cancellation=='Cancellation'),]
+        CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue) ~ Cancellations[[input$dataset3[1]]] + Cancellations[[input$dataset3[2]]]+ Cancellations[[input$dataset3[3]]], Cancellations, FUN=length)
+        
+        names(Profit)[1]<-input$dataset3[1]
+        names(Profit)[2]<-input$dataset3[2]
+        names(Profit)[3]<-input$dataset3[3]
+        names(CountSales)[1]<-input$dataset3[1]
+        names(CountSales)[2]<-input$dataset3[2]
+        names(CountSales)[3]<-input$dataset3[3]
+        names(CountCancellations)[1]<-input$dataset3[1]
+        names(CountCancellations)[2]<-input$dataset3[2]
+        names(CountCancellations)[3]<-input$dataset3[3]
+        Summary <- merge(Profit, CountSales, by=c(input$dataset3[1],input$dataset3[2], input$dataset3[3]), all=TRUE)
+        Summary <- merge(Summary, CountCancellations, by=c(input$dataset3[1],input$dataset3[2], input$dataset3[3]), all=TRUE)
+        Summary[is.na(Summary)] <- 0
+        Summary[,7] <- percent(as.numeric(Summary[,6])/(as.numeric(Summary[,5])+as.numeric(Summary[,6])))
+        Summary[,8] <- Summary[,4]/(as.numeric(Summary[,5])+as.numeric(Summary[,6]))
+        names(Summary)[4]<-"Gross Profit (£)"
+        names(Summary)[5]<-"Sales"
+        names(Summary)[6]<-"Cancellations"
+        names(Summary)[7]<-"Sales Cancellation Percentage"
+        names(Summary)[8]<-"Average Gross Profit per Sale (£)"
+        Summary <- Summary[order(Summary[4]),] 
+        Summary
+      }
   })
   
   data9 <- reactive({
@@ -131,12 +158,18 @@ server = function(input, output, session) {
   })
   
   output$dailyPlot2 <- renderPlotly({
+    if(length(input$dataset3) == 1){
     plot_ly(
-    x = data9()[,1],
-    y = data9()[,input$plotFilter],
-    name = "Performance",
-    type = "bar"
+      x = data9()[,1],
+      y = data9()[,input$plotFilter],
+      name = "Performance",
+      type = "bar"
     )
+    } else if(length(input$dataset3) > 1){
+    plot_ly(data8()) %>%
+      add_trace(data = data8(), type = "bar", x = data8()[,1], y = data8()[,input$plotFilter], color = data8()[,2]) %>%
+      layout(barmode = "stack")
+    }
   })
   
   output$downloadData <- downloadHandler(
