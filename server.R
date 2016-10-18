@@ -130,15 +130,14 @@ server = function(input, output, session) {
   })
   
   data9 <- reactive({
-    if(length(input$dataset3) > 0){  
-    my_data9<- subset(my_data, my_data$BTXDatecreated > input$dateRange[1] & my_data$BTXDatecreated < input$dateRange[2] & BTXPaydt != "")
+    my_data9<- data()
       #if(input$filterName2 == 0){return()}
       #if(is.null(input$filterName2)) return(NULL)
-      Profit <- aggregate(as.numeric(my_data9$TotalValue), by=list(Category=my_data9[[input$dataset3[1]]]), FUN=sum)
+      Profit <- aggregate(as.numeric(my_data9$TotalValue), by=list(Category=my_data9$BTXDatecreated), FUN=sum)
       Sales <- my_data9[ which(my_data9$Cancellation=='N'),]
-      CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales[[input$dataset3[1]]]), FUN=length)
+      CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales$BTXDatecreated), FUN=length)
       Cancellations <- my_data9[ which(my_data9$Cancellation=='Cancellation'),]
-      CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations[[input$dataset3[1]]]), FUN=length)
+      CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations$BTXDatecreated), FUN=length)
       names(CountSales)[2]<-"Count"
       names(CountCancellations)[2]<-"Count"
       Profit$Sales <- CountSales$Count[match(Profit$Category, CountSales$Category)]
@@ -147,26 +146,30 @@ server = function(input, output, session) {
       Profit[,5] <- percent(as.numeric(Profit[,4])/(as.numeric(Profit[,3])+as.numeric(Profit[,4])))
       Profit[,6] <- Profit[,2]/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))
       #    Profit$CancellationPercentage <- as.numeric(Profit$Cancellations)/(as.numeric(Profit$Sales)+as.numeric(Profit$Cancellations))
-      names(Profit)[1]<-input$dataset3[1]
+      names(Profit)[1]<-"BTXDatecreated"
       names(Profit)[2]<-"Gross Profit (£)"
       names(Profit)[5]<-"Sales Cancellation Percentage"
       names(Profit)[6]<-"Average Gross Profit per Sale (£)"
-      Profit <- Profit[order(Profit[1]),] 
+      Profit <- Profit[order(Profit[1]),]
       Profit[is.na(Profit)] <- 0
       Profit
-      }
   })
-  
-  output$dailyPlot2 <- renderPlotly({
-    if(length(input$dataset3) == 1){
-    plot_ly(
-      x = data9()[,1],
-      y = data9()[,input$plotFilter],
+
+    output$dailyPlot2 <- renderPlotly({
+      if(length(input$dataset3) == 0){plot_ly(
+        x = data9()[,1],
+        y = data9()[,input$plotFilter],
+        name = "Performance",
+        type = "bar"
+      )
+      } 
+      else if(length(input$dataset3) == 1){plot_ly(
+      x = data8()[,1],
+      y = data8()[,input$plotFilter],
       name = "Performance",
       type = "bar"
     )
-    } else if(length(input$dataset3) > 1){
-    plot_ly(data8()) %>%
+    } else if(length(input$dataset3) > 1){plot_ly(data8()) %>%
       add_trace(data = data8(), type = "bar", x = data8()[,1], y = data8()[,input$plotFilter], color = data8()[,2]) %>%
       layout(barmode = "stack")
     }
