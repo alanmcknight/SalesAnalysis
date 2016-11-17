@@ -12,7 +12,7 @@ PolicySales <- subset(Data, (BTXTrantype == "New Business" | BTXTrantype == "Ren
 
 x <- rbind(Data, PolicySales)
 x <- x[! duplicated(x, fromLast=TRUE) & seq(nrow(x)) <= nrow(Data), ]
-PolicySales$FinanceValue <- PolicySales$BFDPbalance * .096
+PolicySales$FinanceValue <- round(PolicySales$BFDPbalance * .096, 2)
 
 ###### Traffic Costs and Sources
 PolicySales$TrafficCost <- 0
@@ -95,7 +95,11 @@ Quotes <- read.csv("Quotes09.csv", stringsAsFactors =FALSE)
 Quotes1 <- read.csv("Quotes10.csv", stringsAsFactors =FALSE)
 Quotes <- rbind(Quotes, Quotes1)
 Quotes$Date.Of.Birth <- gsub("[.]", "/", Quotes$Date.Of.Birth)
+
+DailySales[DailySales$BTXPoltype == "PC",] <- merge(DailySales[DailySales$BTXPoltype == "PC",], Quotes, by.x=c("BCMDob", "BCMPcode"), by.y=c("Date.Of.Birth", "Post.Code"), all.x=TRUE)
+
 DailySales <- merge(DailySales, Quotes, by.x=c("BCMDob", "BCMPcode"), by.y=c("Date.Of.Birth", "Post.Code"), all.x=TRUE)
+DailySales[DailySales$BTXPoltype != "PC",][,which( colnames(DailySales)=="Quote.Reference" ):which( colnames(DailySales)=="Site.Name.110" )] <- NA
 DailySales <- DailySales[!is.na(DailySales$BTXPolref),]
 DailySales <- within(DailySales, Source[!is.na(Quote.Reference) & Source != 'Uswitch'] <- 'Quotezone')
 DailySales <- within(DailySales, TrafficCost[!is.na(Quote.Reference) & Source != 'Uswitch' & BTXTrantype == "New Business"] <- 42.5)
@@ -155,50 +159,69 @@ Master <- read.csv("ApricotSalesMasterHeaderOnly.csv", stringsAsFactors =FALSE)
 ##### ADD DAILY SALES
 Master <- rbind(Master, DailySales)
 
+##### Renewal Date Setup
+Master$BTXDatecreated <- gsub("29/02/2016", "28/02/2016", Master$BTXDatecreated)
+Master$BTXDatecreated <- as.Date(Master$BTXDatecreated, "%d/%m/%Y")
+Master$Renewal <- (Master$BTXDatecreated) + years(1)
+
+# ##### ADD ADDITIONAL PRODUCTS
+# ADDITIONALPRODUCTS <- subset(x, BTXTrantype != "Cancellation" & BTXTrantype !="Endorsement" & BTXTrantype !="Journal")
+# ADDON <- aggregate(as.numeric(ADDITIONALPRODUCTS$BTXCommamt), by=list(Category=ADDITIONALPRODUCTS$UserID), FUN=sum)
+# Master$AddOnValue <- Master$AddOnValue + ADDON$x[match(Master$UserID, ADDON$Category)]
+# Master$AddOnValue[is.na(Master$AddOnValue)] <- 0
+
 ##### ADD ADDITIONAL PRODUCTS
 ADDITIONALPRODUCTS <- subset(x, BTXTrantype != "Cancellation" & BTXTrantype !="Endorsement" & BTXTrantype !="Journal")
-ADDON <- aggregate(as.numeric(ADDITIONALPRODUCTS$BTXCommamt), by=list(Category=ADDITIONALPRODUCTS$UserID), FUN=sum)
-Master$AddOnValue <- Master$AddOnValue + ADDON$x[match(Master$UserID, ADDON$Category)]
+#ADDITIONALPRODUCTS$BTXDatecreated <- as.Date(ADDITIONALPRODUCTS$BTXDatecreated, "%d/%m/%Y")
+for( i in 1: nrow(Master)){
+  ADDITIONALPRODUCTS1 <- subset(ADDITIONALPRODUCTS , ADDITIONALPRODUCTS$UserID == Master$UserID[i] & ADDITIONALPRODUCTS$BTXDatecreated >= Master$BTXDatecreated[i] & ADDITIONALPRODUCTS$BTXDatecreated < Master$Renewal[i])
+  Master$AddOnValue[i] <- sum(ADDITIONALPRODUCTS1$BTXOrigdebt)
+}
 Master$AddOnValue[is.na(Master$AddOnValue)] <- 0
 
 ##### ADD ENDORSEMENTS AND JOURNALS
 ADDITIONALPRODUCTS2 <- subset(x, BTXTrantype == "Endorsement" | BTXTrantype == "Journal")
-ADDON2 <- aggregate(as.numeric(ADDITIONALPRODUCTS2$BTXCommamt), by=list(Category=ADDITIONALPRODUCTS2$BTXPolref), FUN=sum)
-Master$AddOnValue <- Master$AddOnValue + ADDON2$x[match(Master$BTXPolref, ADDON2$Category)]
+#ADDITIONALPRODUCTS2$BTXDatecreated <- as.Date(ADDITIONALPRODUCTS$BTXDatecreated, "%d/%m/%Y")
+for( i in 1: nrow(Master)){
+  ADDITIONALPRODUCTS1 <- subset(ADDITIONALPRODUCTS2 , ADDITIONALPRODUCTS2$BTXPolref == Master$BTXPolref[i] & ADDITIONALPRODUCTS2$BTXDatecreated >= Master$BTXDatecreated[i] & ADDITIONALPRODUCTS2$BTXDatecreated < Master$Renewal[i])
+  Master$AddOnValue[i] <- Master$AddOnValue[i] + sum(ADDITIONALPRODUCTS1$BTXOrigdebt)
+}
 Master$AddOnValue[is.na(Master$AddOnValue)] <- 0
+
+# ADDON2 <- aggregate(as.numeric(ADDITIONALPRODUCTS2$BTXCommamt), by=list(Category=ADDITIONALPRODUCTS2$BTXPolref), FUN=sum)
+# Master$AddOnValue <- Master$AddOnValue + ADDON2$x[match(Master$BTXPolref, ADDON2$Category)]
+# Master$AddOnValue[is.na(Master$AddOnValue)] <- 0
 
 ##### ADD CANCELLATIONS
 CANCELLATIONS <- subset(Data, BTXTrantype == "Cancellation")
-#Master$Cancellation[match(Master$BTXPolref,CANCELLATIONS$BTXPolref)] <- "Cancellation"
-#Master$CancellationCommission[match(Master$BTXPolref,CANCELLATIONS$BTXPolref)] <- CANCELLATIONS$BTXCommamt
+CANCELLATIONS$BTXDatecreated <- as.Date(CANCELLATIONS$BTXDatecreated, "%d/%m/%Y")
 
 Master <- merge(Master,CANCELLATIONS, by="BTXPolref", all.x = TRUE)
 Master <- within(Master, Cancellation[BTXTrantype.y == 'Cancellation'] <- 'Cancellation')
 Master$BTXCommamt.y[is.na(Master$BTXCommamt.y)] <- 0
 Master$BTXTrantype.y[is.na(Master$BTXTrantype.y)] <- 0
 for(i in 1:nrow(Master)){
-  if(Master$BTXTrantype.y[i] == 'Cancellation'){
+  if(Master$BTXTrantype.y[i] == 'Cancellation' & Master$BTXDatecreated.y[i] >= Master$BTXDatecreated.x[i] & Master$BTXDatecreated.y[i] < Master$Renewal[i]){
     Master$CancellationCommission[i] <- Master$BTXCommamt.y[i]
     Master$TrafficCost[i] <- 0
-    Master$FinanceValue[i] <- 0
-    Master$AddOnValue[i] <- 0}}
-Master <- Master[,1:which( colnames(Master)=="Apricot.Position")]
+    Master$FinanceValue[i] <- 0}}
+Master <- Master[,1:which( colnames(Master)=="Renewal")]
+
 
 ##### ADD DISCOUNT
 Charges <- subset(x, BTXTrantype == "Charge")
-Charges <- aggregate(as.numeric(Charges$BTXOrigdebt), by=list(Category=Charges$BTXPolref), FUN=sum)
-Master$Discount <- Master$Discount + Charges$x[match(Master$BTXPolref, Charges$Category)]
+Charges$BTXDatecreated <- as.Date(Charges$BTXDatecreated, "%d/%m/%Y")
+for( i in 1: nrow(Master)){
+  Charges1 <- subset(Charges , Charges$BTXPolref == Master$BTXPolref[i] & Charges$BTXDatecreated >= Master$BTXDatecreated[i] & Charges$BTXDatecreated < Master$Renewal[i])
+  Master$Discount[i] <- sum(Charges1$BTXOrigdebt)
+}
 Master$Discount[is.na(Master$Discount)] <- 0
 
-# ##### ADD DISCOUNT
-# DISCOUNT <- subset(x, BTXTrantype == "Charge")
-# Master$Discount <- Master$Discount + DISCOUNT$BTXOrigdebt[match(Master$UserID, DISCOUNT$UserID)]
-# Master$Discount[is.na(Master$Discount)] <- 0
 
 Master$TotalValue <- Master$BTXCommamt + Master$CancellationCommission + Master$FinanceValue + Master$AddOnValue - Master$TrafficCost + Master$Discount
 
 colnames(Master) <- gsub("[.]x", "", colnames(Master))
 colnames(Master) <- gsub("[.]y", "", colnames(Master))
-
+Master$Renewal <- NULL
 
 write.table(Master, "ApricotSalesMaster4.csv", row.names= FALSE, sep=",")
