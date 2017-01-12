@@ -7,7 +7,7 @@ library(plotly)
 
 server = function(input, output, session) {
   
-  my_data <- read.csv("ApricotSalesMaster5.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  my_data <- read.csv("ApricotSalesMaster2.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
   
   filterList1 <- colnames(my_data) 
@@ -41,12 +41,12 @@ server = function(input, output, session) {
     my_data2 <- subset(my_data1, BTXPaydt != "")
     my_data2 <- my_data1[ which(my_data1$BTXPaydt != "" | my_data1$BTXTrantype == "New Business"),]
     Totals <- data.frame(matrix(NA, nrow = 1, ncol = 6))
-    colnames(Totals) <- c("New Business", "Renewals", "Renewals Outstanding", "Cancellations", "Cancellation Percentage", "Profit")
+    colnames(Totals) <- c("New Business", "Renewals", "Renewals Outstanding", "New Business Cancellations", "New Business Cancellation Percentage", "Profit")
     Totals[1,1] <- nrow(subset(my_data1, Cancellation == "N" & BTXTrantype == "New Business"))
     Totals[1,2] <- nrow(subset(my_data2, Cancellation == "N" & BTXTrantype == "Renewal"))
     Totals[1,3] <- nrow(subset(my_data1, BTXPaydt == "" & BTXTrantype == "Renewal"))
-    Totals[1,4] <- nrow(subset(my_data1, Cancellation == "Cancellation"))
-    Totals[1,5] <- percent(as.numeric(Totals[1,4])/(as.numeric(Totals[1,1]) + as.numeric(Totals[1,2] + as.numeric(Totals[1,4]))))
+    Totals[1,4] <- nrow(subset(my_data1, Cancellation != "N" & BTXTrantype == "New Business"))
+    Totals[1,5] <- percent(as.numeric(Totals[1,4])/(as.numeric(Totals[1,1]) + as.numeric(Totals[1,4])))
     Totals[1,6] <- currency(sum(as.numeric(my_data2$TotalValue)))
     Totals
   })
@@ -64,131 +64,124 @@ server = function(input, output, session) {
     my_data2 <- my_data1
     my_data1 <- subset(my_data1, BTXPaydt != "")
     if(length(input$dataset3) == 1){
-      # my_data1 <- data()
-      # my_data2 <- my_data1
-      # my_data1 <- subset(my_data1, BTXPaydt != "")
-      #if(input$filterName2 == 0){return()}
-      #if(is.null(input$filterName2)) return(NULL)
       my_data3 <- my_data2[ which(my_data2$BTXPaydt != "" | my_data2$BTXTrantype == "New Business"),]
-      Profit <- aggregate(as.numeric(my_data3$TotalValue), by=list(Category=my_data3[[input$dataset3[1]]]), FUN=sum)
-      Profit[2] <- round(Profit[2], 2)
+      Profit <- aggregate(my_data3$TotalValue~my_data3[[input$dataset3[1]]], my_data3, FUN = sum)
+      Profit[,2] <- round(Profit[,2], 2)
       Sales <- my_data2[ which(my_data2$Cancellation=='N' & (my_data2$BTXPaydt != "" | my_data2$BTXTrantype == "New Business")),]
-      CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales[[input$dataset3[1]]]), FUN=length)
-      names(CountSales)[2]<-"Count"
-      Cost <- aggregate(as.numeric(Sales$TrafficCost), by=list(Category=Sales[[input$dataset3[1]]]), FUN=sum)
-      names(Cost)[2]<-"TrafficCost"
-      Profit$Sales <- CountSales$Count[match(Profit$Category, CountSales$Category)]
-      Cancellations <- my_data2[ which(my_data2$Cancellation=="Cancellation"),]
+      Summary <- aggregate(cbind(Sales$TotalValue, Sales$TrafficCost)~Sales[[input$dataset3[1]]], Sales, FUN = length)
+      if(input$dataset4 == "Count" | input$dataset4 == "% Uptake"){
+        TrafficCostCount <- subset(Sales, Sales$TrafficCost != 0)
+        TrafficCostCount <- aggregate(TrafficCostCount$TrafficCost~TrafficCostCount[[input$dataset3[1]]], TrafficCostCount, FUN = length)
+        AddOnCount1 <- subset(Sales, Sales$AddOnCount != 0)
+        AddOnCount1 <- aggregate(AddOnCount1$AddOnCount~AddOnCount1[[input$dataset3[1]]], AddOnCount1, FUN = length)
+        FinanceValueCount <- subset(Sales, Sales$FinanceValue != 0)
+        FinanceValueCount <- aggregate(FinanceValueCount$FinanceValue~FinanceValueCount[[input$dataset3[1]]], FinanceValueCount, FUN = length)
+        names(TrafficCostCount)[1] <- "Subset1"
+        names(AddOnCount1)[1] <- "Subset1"
+        names(FinanceValueCount)[1] <- "Subset1"
+        Summary2 <- merge(TrafficCostCount, AddOnCount1, by="Subset1", all=T)
+        Summary2 <- merge(Summary2, FinanceValueCount, by="Subset1", all=T)
+      }else{
+      Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue)~Sales[[input$dataset3[1]]], Sales, FUN = sum)
+      }
+      names(Summary2)[1]<-input$dataset3[1]
+      names(Profit)[1]<-input$dataset3[1]
+      Profit$Sales <- Summary[,2][match(Profit[,1], Summary[,1])]
+      Cancellations <- my_data2[ which(my_data2$Cancellation!="N"),]
       if(nrow(Cancellations) >0){
         CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations[[input$dataset3[1]]]), FUN=length)
         names(CountCancellations)[2]<-"Count"
-        Profit$Cancellations <- CountCancellations$Count[match(Profit$Category, CountCancellations$Category)]
+        Profit$Cancellations <- CountCancellations$Count[match(Profit[,1], CountCancellations$Category)]
       } else{Profit$Cancellations <- 0}
+      Profit <- Profit[,c(1,3,4,2)]
+      Profit <- merge(Profit,Summary2, by=input$dataset3[1], all.x=T)
       Profit[is.na(Profit)] <- 0
-      Profit[,5] <- percent(as.numeric(Profit[,4])/(as.numeric(Profit[,3])+as.numeric(Profit[,4])))
-      Profit[,6] <- round(Profit[,2]/(as.numeric(Profit[,3])+as.numeric(Profit[,4])), 2)
-      Profit$TrafficCost <- Cost$TrafficCost[match(Profit$Category, Cost$Category)]
-      #    Profit$CancellationPercentage <- as.numeric(Profit$Cancellations)/(as.numeric(Profit$Sales)+as.numeric(Profit$Cancellations))
-      Profit[7][Profit[7]==""]<- 0.00 
-      Profit$Y1Profit <- round(Profit[,2] + (Profit[,2]+Profit[,7])*0.5, 2)
-      Profit$Y2Profit <- round(Profit[,2] + (Profit[,2]+Profit[,7])*0.5 + (Profit[,2]+Profit[,7])*0.25, 2)
-      names(Profit)[1]<-input$dataset3[1]
-      names(Profit)[2]<-"Gross Profit (£)"
-      names(Profit)[5]<-"Sales Cancellation Percentage"
-      names(Profit)[6]<-"Average Gross Profit per Sale (£)"
-      names(Profit)[7]<-"Traffic Cost (£)"
-      names(Profit)[8]<-"Profit inc. projected 1 year renewals (£)"
-      names(Profit)[9]<-"Profit inc. projected 2 year renewals (£)"
-      Profit <- Profit[order(Profit[1]),] 
-      Profit[is.na(Profit)] <- 0
+      if(input$dataset4 == "Mean"){
+        Profit[,5:7] <- round(Profit[,5:7]/Profit[,2], 2)
+        Profit[,4] <- round(Profit[,4]/(as.numeric(Profit[,2])+as.numeric(Profit[,2])), 2)
+      }
+      if(input$dataset4 == "% Uptake"){
+        Profit[,5:7] <- round(Profit[,5:7]/Profit[,2]*100, 2)
+      }
+      Profit[,8] <- percent(as.numeric(Profit[,3])/(as.numeric(Profit[,2])+as.numeric(Profit[,3])))
+      Profit$Y1Profit <- round(Profit[,4] + (Profit[,4]+Profit[,5])*0.5, 2)
+      Profit$Y2Profit <- round(Profit[,4] + (Profit[,4]+Profit[,5])*0.5 + (Profit[,4]+Profit[,5])*0.25, 2)
+      names(Profit)[4:8]<-c(paste(input$dataset4, "of Profit", sep = " ") , paste(input$dataset4, "of Traffic Cost", sep = " "), paste(input$dataset4, " of Add-Ons", sep = " "), paste(input$dataset4, "of Finance", sep = " "), "Sales Cancellation Percentage")
+      if(input$dataset4 == "Count" | input$dataset4 == "% Uptake" ){
+          #Profit[,c("Y1Profit", "Y2Profit")] <- NULL
+          Profit <- Profit[ -c(4, 9:10) ]
+      }
+      if(input$dataset4 == "% Uptake"){
+        names(Profit)[4]<-"% Paid Traffic"
+      }
+      if(input$dataset4 == "Mean"){
+        Profit <- Profit[ -c(9:10) ]
+      }
       Profit
     } else if(length(input$dataset3) == 2){
-    # my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2] & BTXPaydt != "")
-    # my_data2 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
       my_data3 <- my_data2[ which(my_data2$BTXPaydt != "" | my_data2$BTXTrantype == "New Business"),]
-    Profit <- aggregate(as.numeric(my_data2$TotalValue) ~ my_data2[[input$dataset3[1]]] + my_data2[[input$dataset3[2]]], my_data2, FUN=sum)
-    Profit[3] <- round(Profit[3], 2)
+    Profit <- aggregate(as.numeric(my_data3$TotalValue) ~ my_data3[[input$dataset3[1]]] + my_data3[[input$dataset3[2]]], my_data3, FUN=sum)
+    Profit[,3] <- round(Profit[,3], 2)
     Sales <- my_data2[ which(my_data2$Cancellation=='N' & (my_data2$BTXPaydt != "" | my_data2$BTXTrantype == "New Business")),]
-    CountSales <- aggregate(as.numeric(Sales$TotalValue) ~ Sales[[input$dataset3[1]]] + Sales[[input$dataset3[2]]], Sales, FUN=length)
-    Cost<- aggregate(as.numeric(Sales$TrafficCost) ~ Sales[[input$dataset3[1]]] + Sales[[input$dataset3[2]]], Sales, FUN=sum)
+    Summary <- aggregate(Sales$TotalValue~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]], Sales, FUN = length)
+    Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue)~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]], Sales, FUN = sum)
+    names(Summary)[1]<-input$dataset3[1]
+    names(Summary)[2]<-input$dataset3[2]
+    names(Summary2)[1]<-input$dataset3[1]
+    names(Summary2)[2]<-input$dataset3[2]
     names(Profit)[1]<-input$dataset3[1]
     names(Profit)[2]<-input$dataset3[2]
-    names(CountSales)[1]<-input$dataset3[1]
-    names(CountSales)[2]<-input$dataset3[2]
-    names(Cost)[1]<-input$dataset3[1]
-    names(Cost)[2]<-input$dataset3[2]
-    Summary <- merge(Profit, CountSales, by=c(input$dataset3[1],input$dataset3[2]), all=TRUE)
-    Cancellations <- my_data2[ which(my_data2$Cancellation=='Cancellation'),]
+    Profit <- merge(Profit, Summary, by=c(input$dataset3[1],input$dataset3[2]), all.x=T)
+    Cancellations <- my_data2[ which(my_data2$Cancellation!="N"),]
     if(nrow(Cancellations) >0){
       CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue) ~ Cancellations[[input$dataset3[1]]] + Cancellations[[input$dataset3[2]]], Cancellations, FUN=length)
       names(CountCancellations)[1]<-input$dataset3[1]
       names(CountCancellations)[2]<-input$dataset3[2]
-      Summary <- merge(Summary, CountCancellations, by=c(input$dataset3[1],input$dataset3[2]), all=TRUE)
-    } else{Summary$Cancellations <- 0}
-    Summary[is.na(Summary)] <- 0
-    Summary[,6] <- percent(as.numeric(Summary[,5])/(as.numeric(Summary[,4])+as.numeric(Summary[,5])))
-    Summary[,7] <- round(Summary[,3]/(as.numeric(Summary[,4])+as.numeric(Summary[,5])), 2)
-    names(Summary)[3]<-"Gross Profit (£)"
-    names(Summary)[4]<-"Sales"
-    names(Summary)[5]<-"Cancellations"
-    names(Summary)[6]<-"Sales Cancellation Percentage"
-    names(Summary)[7]<-"Average Gross Profit per Sale (£)"
-    Summary <- merge(Summary, Cost, by=c(input$dataset3[1],input$dataset3[2]), all=TRUE)
-    names(Summary)[8]<-"Traffic.Cost"
-    Summary$Traffic.Cost[is.na(Summary$Traffic.Cost)] <- 0
-    names(Summary)[8]<-"Traffic Cost (£)"
-    Summary$Y1Profit <- round(Summary[,3] + (Summary[,3]+Summary[,8])*0.5, 2)
-    Summary$Y2Profit <- round(Summary[,3] + (Summary[,3]+Summary[,8])*0.5 + (Summary[,3]+Summary[,8])*0.25, 2)
-    names(Summary)[9]<-"Profit inc. projected 1 year renewals (£)"
-    names(Summary)[10]<-"Profit inc. projected 2 year renewals (£)"
-    Summary <- Summary[order(Summary[3]),] 
-    Summary
+      Profit <- merge(Profit, CountCancellations, by=c(input$dataset3[1],input$dataset3[2]), all.x=T)
+    } else{Profit$Cancellations <- 0}
+    Profit <- merge(Profit,Summary2, by=c(input$dataset3[1],input$dataset3[2]), all.x=T)
+    names(Profit)[3]<-"Gross Profit (£)"
+    Profit[is.na(Profit)] <- 0
+    Profit[,9] <- percent(as.numeric(Profit[,5])/(as.numeric(Profit[,4])+as.numeric(Profit[,5])))
+    Profit[,10] <- round(Profit[,3]/(as.numeric(Profit[,4])+as.numeric(Profit[,5])), 2)
+    Profit$Y1Profit <- round(Profit[,3] + (Profit[,3]+Profit[,6])*0.5, 2)
+    Profit$Y2Profit <- round(Profit[,3] + (Profit[,3]+Profit[,6])*0.5 + (Profit[,3]+Profit[,6])*0.25, 2)
+    names(Profit)[4:10]<-c("Sales", "Cancellations", "Traffic Cost", "Add On Value", "Finance Value", "Sales Cancellation Percentage", "Gross Profit per Sale (£)")
+    Profit
     } else if(length(input$dataset3) == 3){
-        # my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2] & BTXPaydt != "")
-        # my_data2 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
       my_data3 <- my_data2[ which(my_data2$BTXPaydt != "" | my_data2$BTXTrantype == "New Business"),]
-        Profit <- aggregate(as.numeric(my_data2$TotalValue) ~ my_data2[[input$dataset3[1]]] + my_data2[[input$dataset3[2]]]+ my_data2[[input$dataset3[3]]], my_data2, FUN=sum)
-        Profit[4] <- round(Profit[4], 2)
-        Sales <- my_data2[ which(my_data2$Cancellation=='N' & (my_data2$BTXPaydt != "" | my_data2$BTXTrantype == "New Business")),]
-        CountSales <- aggregate(as.numeric(Sales$TotalValue) ~ Sales[[input$dataset3[1]]] + Sales[[input$dataset3[2]]] + Sales[[input$dataset3[3]]], Sales, FUN=length)
-        Cost<- aggregate(as.numeric(Sales$TrafficCost) ~ Sales[[input$dataset3[1]]] + Sales[[input$dataset3[2]]] + Sales[[input$dataset3[3]]], Sales, FUN=sum)
-        names(Profit)[1]<-input$dataset3[1]
-        names(Profit)[2]<-input$dataset3[2]
-        names(Profit)[3]<-input$dataset3[3]
-        names(CountSales)[1]<-input$dataset3[1]
-        names(CountSales)[2]<-input$dataset3[2]
-        names(CountSales)[3]<-input$dataset3[3]
-        names(Cost)[1]<-input$dataset3[1]
-        names(Cost)[2]<-input$dataset3[2]
-        names(Cost)[3]<-input$dataset3[3]
-        Summary <- merge(Profit, CountSales, by=c(input$dataset3[1],input$dataset3[2], input$dataset3[3]), all=TRUE)
-        Cancellations <- my_data2[ which(my_data2$Cancellation=='Cancellation'),]
-        if(nrow(Cancellations) >0){
-          CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue) ~ Cancellations[[input$dataset3[1]]] + Cancellations[[input$dataset3[2]]]+ Cancellations[[input$dataset3[3]]], Cancellations, FUN=length)
-          names(CountCancellations)[1]<-input$dataset3[1]
-          names(CountCancellations)[2]<-input$dataset3[2]
-          names(CountCancellations)[3]<-input$dataset3[3]
-          Summary <- merge(Summary, CountCancellations, by=c(input$dataset3[1],input$dataset3[2], input$dataset3[3]), all=TRUE)
-        } else{Summary$Cancellations <- 0}
-        Summary[is.na(Summary)] <- 0
-        Summary[,7] <- percent(as.numeric(Summary[,6])/(as.numeric(Summary[,5])+as.numeric(Summary[,6])))
-        Summary[,8] <- round(Summary[,4]/(as.numeric(Summary[,5])+as.numeric(Summary[,6])), 2)
-        names(Summary)[4]<-"Gross Profit (£)"
-        names(Summary)[5]<-"Sales"
-        names(Summary)[6]<-"Cancellations"
-        names(Summary)[7]<-"Sales Cancellation Percentage"
-        names(Summary)[8]<-"Average Gross Profit per Sale (£)"
-        Summary <- merge(Summary, Cost, by=c(input$dataset3[1],input$dataset3[2], input$dataset3[3]), all=TRUE)
-        names(Summary)[9]<-"Traffic.Cost"
-        Summary$Traffic.Cost[is.na(Summary$Traffic.Cost)] <- 0
-        names(Summary)[9]<-"Traffic Cost (£)"
-        Summary[9][Summary[9]==""]<- 0
-        Summary$Y1Profit <- round(Summary[,4] + (Summary[,4]+Summary[,9])*0.5, 2)
-        Summary$Y2Profit <- round(Summary[,4] + (Summary[,4]+Summary[,9])*0.5 + (Summary[,4]+Summary[,9])*0.25, 2)
-        names(Summary)[10]<-"Profit inc. projected 1 year renewals (£)"
-        names(Summary)[11]<-"Profit inc. projected 2 year renewals (£)"
-        Summary <- Summary[order(Summary[4]),] 
-        Summary
+      Profit <- aggregate(as.numeric(my_data3$TotalValue) ~ my_data3[[input$dataset3[1]]] + my_data3[[input$dataset3[2]]]+ my_data3[[input$dataset3[3]]], my_data3, FUN=sum)
+      Profit[,4] <- round(Profit[,4], 2)
+      Sales <- my_data2[ which(my_data2$Cancellation=='N' & (my_data2$BTXPaydt != "" | my_data2$BTXTrantype == "New Business")),]
+      Summary <- aggregate(Sales$TotalValue~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]]+ Sales[[input$dataset3[3]]], Sales, FUN = length)
+      Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue)~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]]+ Sales[[input$dataset3[3]]], Sales, FUN = sum)
+      names(Summary)[1]<-input$dataset3[1]
+      names(Summary)[2]<-input$dataset3[2]
+      names(Summary)[3]<-input$dataset3[3]
+      names(Summary2)[1]<-input$dataset3[1]
+      names(Summary2)[2]<-input$dataset3[2]
+      names(Summary2)[3]<-input$dataset3[3]
+      names(Profit)[1]<-input$dataset3[1]
+      names(Profit)[2]<-input$dataset3[2]
+      names(Profit)[3]<-input$dataset3[3]
+      Profit <- merge(Profit, Summary, by=c(input$dataset3[1],input$dataset3[2], input$dataset3[3]), all.x=T)
+      Cancellations <- my_data2[ which(my_data2$Cancellation!="N"),]
+      if(nrow(Cancellations) >0){
+        CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue) ~ Cancellations[[input$dataset3[1]]] + Cancellations[[input$dataset3[2]]] + Cancellations[[input$dataset3[3]]], Cancellations, FUN=length)
+        names(CountCancellations)[1]<-input$dataset3[1]
+        names(CountCancellations)[2]<-input$dataset3[2]
+        names(CountCancellations)[3]<-input$dataset3[3]
+        Profit <- merge(Profit, CountCancellations, by=c(input$dataset3[1],input$dataset3[2], input$dataset3[3]), all.x=T)
+      } else{Profit$Cancellations <- 0}
+      Profit <- merge(Profit,Summary2, by=c(input$dataset3[1],input$dataset3[2],input$dataset3[3]), all.x=T)
+      names(Profit)[4]<-"Gross Profit (£)"
+      Profit[is.na(Profit)] <- 0
+      Profit[,10] <- percent(as.numeric(Profit[,6])/(as.numeric(Profit[,5])+as.numeric(Profit[,6])))
+      Profit[,11] <- round(Profit[,4]/(as.numeric(Profit[,5])+as.numeric(Profit[,6])), 2)
+      Profit$Y1Profit <- round(Profit[,4] + (Profit[,4]+Profit[,7])*0.5, 2)
+      Profit$Y2Profit <- round(Profit[,4] + (Profit[,4]+Profit[,7])*0.5 + (Profit[,4]+Profit[,7])*0.25, 2)
+      names(Profit)[5:11]<-c("Sales", "Cancellations", "Traffic Cost", "Add On Value", "Finance Value", "Sales Cancellation Percentage", "Gross Profit per Sale (£)")
+      Profit
       }
   })
   
@@ -203,7 +196,7 @@ server = function(input, output, session) {
       CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales$BTXDatecreated), FUN=length)
       names(CountSales)[2]<-"Count"
       Profit$Sales <- CountSales$Count[match(Profit$Category, CountSales$Category)]
-      Cancellations <- data()[ which(data()$Cancellation=='Cancellation'),]
+      Cancellations <- data()[ which(data()$Cancellation!='N'),]
       if(nrow(Cancellations) >0){
       CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations$BTXDatecreated), FUN=length)
       names(CountSales)[2]<-"Count"
@@ -218,7 +211,7 @@ server = function(input, output, session) {
       names(Profit)[1]<-"BTXDatecreated"
       names(Profit)[2]<-"Gross Profit (£)"
       names(Profit)[5]<-"Sales Cancellation Percentage"
-      names(Profit)[6]<-"Average Gross Profit per Sale (£)"
+      names(Profit)[6]<-"Gross Profit per Sale (£)"
       Profit <- Profit[order(Profit[1]),] 
       Profit[is.na(Profit)] <- 0
       Profit
