@@ -1,31 +1,52 @@
 options(shiny.maxRequestSize=50*1024^2)
-library(plyr)
-library(reshape2)
-library(leaflet)
 library(shiny)
+library(shinydashboard)
 library(plotly)
+library(leaflet)
+library(lubridate)
+library(stringr)
+source("user.R")
+source("admin.R")
 
-server = function(input, output, session) {
+my_username <- c("stephen.mccann", "helen.campbell", "alan","mark.walker", "greg.wilson", "admin")
+my_password <- c("Stephen","Helen", "Alan", "Mark", "Greg", "123")
+get_role=function(user){
+  if(user!="admin") {
+    return("TEST")
+  }else{
+    return("ADMIN")
+  }
+}
+
+get_ui=function(role){
+  if(role=="TEST"){
+    return(list_field_user)
+  }else{
+    return(list_field_admin)
+  }
+}
+
+shinyServer(function(input, output,session) {
   
   my_data <- read.csv("ApricotSalesMaster2.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  AdData <- read.csv("AdditionalReport.csv", stringsAsFactors =FALSE)
   my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
   
-  filterList1 <- colnames(my_data) 
+  filterList1 <- colnames(my_data)
   filterList2 <- c("All", sort(unique(my_data$Product)))
   percent <- function(x, digits = 2, format = "f") {
     paste0(formatC(100 * x, format = format, digits = digits), "%")
   }
   currency <- function(x) {
-  paste("£",format(x, big.mark=","),sep="")
+    paste("£",format(x, big.mark=","),sep="")
   }
   specify_decimal <- function(x, k) format(round(x, k), nsmall=k)
   
   data <- reactive({
     my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
-    if(input$filterName != "All"){
-      my_data1 <- subset(my_data1, my_data1$Product == input$filterName)
-    }
-    my_data1
+    if(input$filterName == "All"){
+      my_data1
+    }else{subset(my_data1, my_data1$Product == input$filterName)}
   })
   
   data1 <- reactive({
@@ -34,6 +55,73 @@ server = function(input, output, session) {
       my_data1 <- subset(my_data1, my_data1$Product == input$filterName)
     }
     my_data1
+  })
+  
+  data2 <- reactive({
+    if(input$reportSelect[1] == "Quotezone Report"){
+      my_data1 <- subset(my_data[, c(1:(which(colnames(my_data)=="UK.Residency.Years")), (ncol(my_data)-2):ncol(my_data))], my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])
+      my_data1}else if(input$reportSelect[1] == "USwitch Report"){
+        #my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
+        Data1 <- AdData
+        USwitchData <- my_data[grep("APRUS", my_data$ECWebref),]
+        SalesData<- subset(USwitchData, USwitchData$BTXDatecreated >= input$dateRange1[1] & USwitchData$BTXDatecreated <= input$dateRange1[2])
+        CancellationData <- subset(USwitchData, USwitchData$Cancellation != "N")
+        CancellationData <- subset(CancellationData, as.Date(CancellationData$Cancellation, "%d/%m/%Y") >= input$dateRange1[1] & as.Date(CancellationData$Cancellation, "%d/%m/%Y") <= input$dateRange1[2])
+        USwitchData <- rbind(SalesData, CancellationData)
+        USwitchData <- USwitchData [!duplicated(USwitchData ), ]
+
+        USwitchData$recordtype <- "Sale"
+        USwitchData$salesmonth <- cut(as.Date(USwitchData$BTXDtraised), "month")
+        USwitchData$brand <- "Apricot"
+        USwitchData$surname <- "NA"
+
+        USwitchData1 <- merge(USwitchData, Data1, by = "BTXPolref", all.x=TRUE)
+
+        USwitchData1 <- USwitchData1[c("recordtype", "salesmonth", "brand", "BCMEmail.x", "BCMPcode.x", "BCMName", "surname", "BCMDob.x", "CFReg", "BTXDtraised.x", "ECWebref.x", "BTXPolref", "BTXPaymethod.x", "BTXOrigdebt.x", "BTXDatecreated.x", "Cancellation", "Cancellation", "FinanceValue", "BTXInsurer.x")]
+
+        USwitchData1$surname <- word(USwitchData1$BCMName, -1)
+        USwitchData1$BCMName <- word(USwitchData1$BCMName, -2)
+
+        colnames(USwitchData1) <- c("recordtype", "salesmonth", "brand", "emailaddress", "postcode", "firstname", "surname", "dob", "carregistrationnumber", "policystartdate", "policyquotereference",	"providerquotereference",	"purchasechannel",	"premium",	"policypurchasedate",	"cancellationreason",	"cancellationeffectivedate",	"purchasetype",	"insurerunderwritingpolicy")
+
+        USwitchData1 <- USwitchData1[!duplicated(USwitchData1), ]
+
+        USwitchData1$purchasechannel[USwitchData1$purchasechannel == "O"] <- "Online"
+        USwitchData1$purchasechannel[USwitchData1$purchasechannel != "Online"] <- "Telephone"
+        USwitchData1$cancellationreason[USwitchData1$cancellationreason != "N"] <- "NTU"
+
+        USwitchData1$purchasetype[USwitchData1$purchasetype != "0"] <- "Monthly"
+        USwitchData1$purchasetype[USwitchData1$purchasetype == "0"] <- "Annual"
+        USwitchData1
+      }else{
+        som <- function(x) {
+          as.Date(format(x, "%Y-%m-01"))
+        }
+        
+        MISReport <- AdData[AdData$BTXDtsettled == "" & AdData$BTXInsurer == "MIS Claims" & AdData$BTXPoltype != "HQ",]
+        MISReport <- MISReport[,c("BTXPolref", "BCMName", "BCMAddr1", "BCMAddr2", "BCMAddr3", "BCMAddr4", "BCMPcode", "BCMTel", "BTXDtraised")]
+        MISReport$BTXDtraised <- as.Date(MISReport$BTXDtraised, "%d/%m/%Y")
+        year(MISReport$BTXDtraised) <- year(MISReport$BTXDtraised)+1
+        MISReport$UserID <- substr(MISReport[,1], 1, 6)
+        
+        AdData$CFReg <- ifelse(AdData$CFReg == "", AdData$TW1Regmark, AdData$CFReg)
+        #Data$CFReg[Data$CFReg == ""] <- Data$TW1Regmark[Data$CFReg == ""]
+        
+        VehicleReg <- AdData[AdData$CFReg != "",c("BTXPolref", "CFReg")]
+        VehicleReg <- VehicleReg[!duplicated(VehicleReg), ]
+        VehicleReg$UserID <- substr(VehicleReg$BTXPolref, 1, 6)
+        
+        MISReport <- merge(MISReport, VehicleReg, by = "UserID", all.x=TRUE)
+        MISReport$UserID <- NULL
+        MISReport$BTXPolref <- NULL
+        
+        MISReport <- MISReport[,c("BTXPolref.x", "BCMName", "BCMAddr1", "BCMAddr2", "BCMAddr3", "BCMAddr4", "BCMPcode", "BCMTel", "CFReg", "BTXDtraised")]
+        
+        colnames(MISReport) <- c("Broker Ref", "Name", "Address 1", "Address 2", "Address 3", "Address 4", "Postcode", "Phone Number", "Vehicle Registration", "Policy Renewal Date")
+        
+        MISReport <- MISReport[!duplicated(MISReport), ]
+        MISReport
+      }
   })
   
   data6 <- reactive({
@@ -85,7 +173,7 @@ server = function(input, output, session) {
         Summary2 <- merge(Summary2, FinanceValueCount, by="Subset1", all=T)
         Summary2 <- merge(Summary2, DiscountCount, by="Subset1", all=T)
       }else{
-      Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales[[input$dataset3[1]]], Sales, FUN = sum)
+        Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales[[input$dataset3[1]]], Sales, FUN = sum)
       }
       names(Summary2)[1]<-input$dataset3[1]
       names(Profit)[1]<-input$dataset3[1]
@@ -111,8 +199,8 @@ server = function(input, output, session) {
       Profit$Y2Profit <- round((Profit[,4]+Profit[,5])*0.56, 2)
       names(Profit)[4:9]<-c(paste(input$dataset4, "of Profit", sep = " ") , paste(input$dataset4, "of Traffic Cost", sep = " "), paste(input$dataset4, " of Add-Ons", sep = " "), paste(input$dataset4, "of Finance", sep = " "), paste(input$dataset4, "of Discount", sep = " "), "Sales Cancellation Percentage")
       if(input$dataset4 == "Count" | input$dataset4 == "% Uptake" ){
-          #Profit[,c("Y1Profit", "Y2Profit")] <- NULL
-          Profit <- Profit[ -c(4, 10:11) ]
+        #Profit[,c("Y1Profit", "Y2Profit")] <- NULL
+        Profit <- Profit[ -c(4, 10:11) ]
       }
       if(input$dataset4 == "% Uptake"){
         names(Profit)[4]<-"% Paid Traffic"
@@ -126,7 +214,7 @@ server = function(input, output, session) {
       Profit[,ncol(Profit)+1] <- round(Profit[,ncol(Profit)]/(Profit[,2]+Profit[,3]), 2)
       names(Profit)[ncol(Profit)]<-"Average Profit"
       Profit
-      }else if(length(input$dataset3) == 2){
+    }else if(length(input$dataset3) == 2){
       Profit <- aggregate(as.numeric(my_data2$TotalValue) ~ my_data2[[input$dataset3[1]]] + my_data2[[input$dataset3[2]]], my_data2, FUN=sum)
       Profit[,3] <- round(Profit[,3], 2)
       Sales <- my_data2[ which(my_data2$Cancellation=='N'),]
@@ -152,7 +240,7 @@ server = function(input, output, session) {
         Summary2 <- merge(Summary2, FinanceValueCount, by=c("Subset1", "Subset2"), all=T)
         Summary2 <- merge(Summary2, DiscountCount, by=c("Subset1", "Subset2"), all=T)
       }else{
-      Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]], Sales, FUN = sum)
+        Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]], Sales, FUN = sum)
       }
       names(Summary)[1]<-input$dataset3[1]
       names(Summary)[2]<-input$dataset3[2]
@@ -230,7 +318,7 @@ server = function(input, output, session) {
         Summary2 <- merge(Summary2, FinanceValueCount, by=c("Subset1", "Subset2", "Subset3"), all=T)
         Summary2 <- merge(Summary2, DiscountCount, by=c("Subset1", "Subset2", "Subset3"), all=T)
       }else{
-      Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]]+ Sales[[input$dataset3[3]]], Sales, FUN = sum)
+        Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]]+ Sales[[input$dataset3[3]]], Sales, FUN = sum)
       }
       names(Summary)[1]<-input$dataset3[1]
       names(Summary)[2]<-input$dataset3[2]
@@ -282,42 +370,42 @@ server = function(input, output, session) {
       Profit[,ncol(Profit)+1] <- round(Profit[,ncol(Profit)]/(Profit[,4]+Profit[,5]), 2)
       names(Profit)[ncol(Profit)]<-"Average Profit"
       Profit
-      }
+    }
   })
   
   data9 <- reactive({
     my_data9 <- data()
     my_data2 <- my_data9
     my_data9<- subset(my_data9,  BTXPaydt != "")
-      #if(input$filterName2 == 0){return()}
-      #if(is.null(input$filterName2)) return(NULL)
-      Profit <- aggregate(as.numeric(my_data9$TotalValue), by=list(Category=my_data9$BTXDatecreated), FUN=sum)
-      Sales <- my_data9[ which(my_data9$Cancellation=='N'),]
-      CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales$BTXDatecreated), FUN=length)
-      names(CountSales)[2]<-"Count"
-      Profit$Sales <- CountSales$Count[match(Profit$Category, CountSales$Category)]
-      Cancellations <- data()[ which(data()$Cancellation!='N'),]
-      if(nrow(Cancellations) >0){
+    #if(input$filterName2 == 0){return()}
+    #if(is.null(input$filterName2)) return(NULL)
+    Profit <- aggregate(as.numeric(my_data9$TotalValue), by=list(Category=my_data9$BTXDatecreated), FUN=sum)
+    Sales <- my_data9[ which(my_data9$Cancellation=='N'),]
+    CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales$BTXDatecreated), FUN=length)
+    names(CountSales)[2]<-"Count"
+    Profit$Sales <- CountSales$Count[match(Profit$Category, CountSales$Category)]
+    Cancellations <- data()[ which(data()$Cancellation!='N'),]
+    if(nrow(Cancellations) >0){
       CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations$BTXDatecreated), FUN=length)
       names(CountSales)[2]<-"Count"
       names(CountCancellations)[2]<-"Count"
       Profit$Sales <- CountSales$Count[match(Profit$Category, CountSales$Category)]
       Profit$Cancellations <- CountCancellations$Count[match(Profit$Category, CountCancellations$Category)]
-      } else{Profit$Cancellations <- 0}
-      Profit[is.na(Profit)] <- 0
-      Profit[,5] <- as.numeric(Profit[,4])/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))*100
-      Profit[,6] <- Profit[,2]/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))
-      #    Profit$CancellationPercentage <- as.numeric(Profit$Cancellations)/(as.numeric(Profit$Sales)+as.numeric(Profit$Cancellations))
-      names(Profit)[1]<-"BTXDatecreated"
-      names(Profit)[2]<-"Total Profit"
-      names(Profit)[5]<-"Sales Cancellation Percentage"
-      names(Profit)[6]<-"Average Profit"
-      Profit <- Profit[order(Profit[1]),] 
-      Profit[is.na(Profit)] <- 0
-      Profit
+    } else{Profit$Cancellations <- 0}
+    Profit[is.na(Profit)] <- 0
+    Profit[,5] <- as.numeric(Profit[,4])/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))*100
+    Profit[,6] <- Profit[,2]/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))
+    #    Profit$CancellationPercentage <- as.numeric(Profit$Cancellations)/(as.numeric(Profit$Sales)+as.numeric(Profit$Cancellations))
+    names(Profit)[1]<-"BTXDatecreated"
+    names(Profit)[2]<-"Total Profit"
+    names(Profit)[5]<-"Sales Cancellation Percentage"
+    names(Profit)[6]<-"Average Profit"
+    Profit <- Profit[order(Profit[1]),]
+    Profit[is.na(Profit)] <- 0
+    Profit
   })
   
-  output$selectUI2 <- renderUI({ 
+  output$selectUI2 <- renderUI({
     selectInput("filterName", "Select Product", filterList2)
   })
   
@@ -330,16 +418,16 @@ server = function(input, output, session) {
         type = "bar"
       )}
     else if(length(input$dataset3) == 1){
-    plot_ly(
-      x = data8()[,1],
-      y = data8()[,input$plotFilter],
-      name = "Performance",
-      type = "bar"
-    )
+      plot_ly(
+        x = data8()[,1],
+        y = data8()[,input$plotFilter],
+        name = "Performance",
+        type = "bar"
+      )
     } else if(length(input$dataset3) > 1){
-    plot_ly(data8()) %>%
-      add_trace(data = data8(), type = "bar", x = data8()[,1], y = data8()[,input$plotFilter], color = data8()[,2]) %>%
-      layout(barmode = "stack")
+      plot_ly(data8()) %>%
+        add_trace(data = data8(), type = "bar", x = data8()[,1], y = data8()[,input$plotFilter], color = data8()[,2]) %>%
+        layout(barmode = "stack")
     }
   })
   
@@ -356,17 +444,17 @@ server = function(input, output, session) {
       #   add_trace(y = ~data8()[,10], name = 'Y1Profit') %>%
       #   add_trace(y = ~data8()[,11], name = 'Y2Profit') %>%
       #   layout(yaxis = list(title = 'Sum'), xaxis = list(title = ""), barmode = 'group')
-        
+      
       p <- plot_ly(data8(), x = ~data8()[,1], y = ~data8()[,4], type = 'scatter', mode = 'lines', name = 'Gross Profit') %>%
         add_trace(y = ~data8()[,10], name = 'Y1Profit', mode = 'lines+markers') %>%
         add_trace(y = ~data8()[,11], name = 'Y2Profit', mode = 'lines+markers') %>%
         layout(yaxis = list(title = 'Sum £'), xaxis = list(title = ""))
       p
       
-        # x = data8()[,1],
-        # y = data8()[,Sales],
-        # name = "Performance",
-        # type = "bar"
+      # x = data8()[,1],
+      # y = data8()[,Sales],
+      # name = "Performance",
+      # type = "bar"
     } else if(length(input$dataset3) > 1){
       plot <- data8()
       plot <- subset(plot, plot[,2] == "New Business")
@@ -383,9 +471,70 @@ server = function(input, output, session) {
       write.csv(data1(), file, row.names = FALSE)
     }
   )
+  output$reportDownload <- downloadHandler(
+    filename = function() { 'SaleData.csv' }, content = function(file) {
+      write.csv(data2(), file, row.names = FALSE)
+    }
+  )
   
   output$my_output_data6 <- renderDataTable({data6()}, options =list(paging = FALSE, searching = FALSE, info = FALSE))
   output$my_output_data8 <- renderDataTable({
     if(length(input$dataset3) > 0){data8()[,1:(ncol(data8())-2)]}
-    })
-}
+  })
+  
+  USER <- reactiveValues(Logged = FALSE,role=NULL)
+  
+  ui1 <- function(){
+    tagList(
+      div(id = "login",
+          wellPanel(textInput("userName", "Username"),
+                    passwordInput("passwd", "Password"),
+                    br(),actionButton("Login", "Log in")))
+      ,tags$style(type="text/css", "#login {font-size:10px;   text-align: left;position:absolute;top: 40%;left: 50%;margin-top: -10px;margin-left: -150px;}")
+    )}
+  
+  ui2 <- function(){list(tabPanel("Sales",get_ui(USER$role)[2:3]),get_ui(USER$role)[[1]])}
+  
+  observe({ 
+    if (USER$Logged == FALSE) {
+      if (!is.null(input$Login)) {
+        if (input$Login > 0) {
+          Username <- isolate(input$userName)
+          Password <- isolate(input$passwd)
+          Id.username <- which(my_username == Username)
+          Id.password <- which(my_password == Password)
+          if (length(Id.username) > 0 & length(Id.password) > 0) {
+            if (Id.username == Id.password) {
+              USER$Logged <- TRUE
+              USER$role=get_role(Username)
+              
+            }
+          } 
+        }
+      }
+    }
+  })
+  
+  observe({
+    if (USER$Logged == FALSE) {
+      
+      output$page <- renderUI({
+        box(
+          div(class="outer",do.call(bootstrapPage,c("",ui1()))))
+      })
+    }
+    if (USER$Logged == TRUE)    {
+      output$page <- renderUI({
+        box(width = 12,
+            div(class="outer",do.call(navbarPage,c(inverse=TRUE,title = "Apricot Dashboard",ui2())))
+        )})
+      #print(ui)
+    }
+  })
+  
+  number <- "6"
+  observe({
+    session$sendCustomMessage(type='myCallbackHandler', number) 
+  })
+  
+})
