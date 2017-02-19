@@ -1,10 +1,9 @@
-options(shiny.maxRequestSize=50*1024^2)
 library(shiny)
 library(shinydashboard)
 library(plotly)
 library(leaflet)
-library(lubridate)
 library(stringr)
+library(lubridate)
 source("user.R")
 source("admin.R")
 
@@ -29,8 +28,9 @@ get_ui=function(role){
 shinyServer(function(input, output,session) {
   
   my_data <- read.csv("ApricotSalesMaster2.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
-  AdData <- read.csv("AdditionalReport.csv", stringsAsFactors =FALSE)
+  AdData <- read.csv("AdditionalReport.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
+  
   
   filterList1 <- colnames(my_data)
   filterList2 <- c("All", sort(unique(my_data$Product)))
@@ -44,9 +44,10 @@ shinyServer(function(input, output,session) {
   
   data <- reactive({
     my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
-    if(input$filterName == "All"){
-      my_data1
-    }else{subset(my_data1, my_data1$Product == input$filterName)}
+    if(input$filterName != "All"){
+      my_data1 <- subset(my_data1, my_data1$Product == input$filterName)
+    }
+    my_data1
   })
   
   data1 <- reactive({
@@ -57,73 +58,74 @@ shinyServer(function(input, output,session) {
     my_data1
   })
   
+  ### REPORTING ###
   data2 <- reactive({
-    if(input$reportSelect[1] == "Quotezone Report"){
-      my_data1 <- subset(my_data[, c(1:(which(colnames(my_data)=="UK.Residency.Years")), (ncol(my_data)-2):ncol(my_data))], my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])
-      my_data1}else if(input$reportSelect[1] == "USwitch Report"){
-        #my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
-        Data1 <- AdData
-        USwitchData <- my_data[grep("APRUS", my_data$ECWebref),]
-        SalesData<- subset(USwitchData, USwitchData$BTXDatecreated >= input$dateRange1[1] & USwitchData$BTXDatecreated <= input$dateRange1[2])
-        CancellationData <- subset(USwitchData, USwitchData$Cancellation != "N")
-        CancellationData <- subset(CancellationData, as.Date(CancellationData$Cancellation, "%d/%m/%Y") >= input$dateRange1[1] & as.Date(CancellationData$Cancellation, "%d/%m/%Y") <= input$dateRange1[2])
-        USwitchData <- rbind(SalesData, CancellationData)
-        USwitchData <- USwitchData [!duplicated(USwitchData ), ]
-
-        USwitchData$recordtype <- "Sale"
-        USwitchData$salesmonth <- cut(as.Date(USwitchData$BTXDtraised), "month")
-        USwitchData$brand <- "Apricot"
-        USwitchData$surname <- "NA"
-
-        USwitchData1 <- merge(USwitchData, Data1, by = "BTXPolref", all.x=TRUE)
-
-        USwitchData1 <- USwitchData1[c("recordtype", "salesmonth", "brand", "BCMEmail.x", "BCMPcode.x", "BCMName", "surname", "BCMDob.x", "CFReg", "BTXDtraised.x", "ECWebref.x", "BTXPolref", "BTXPaymethod.x", "BTXOrigdebt.x", "BTXDatecreated.x", "Cancellation", "Cancellation", "FinanceValue", "BTXInsurer.x")]
-
-        USwitchData1$surname <- word(USwitchData1$BCMName, -1)
-        USwitchData1$BCMName <- word(USwitchData1$BCMName, -2)
-
-        colnames(USwitchData1) <- c("recordtype", "salesmonth", "brand", "emailaddress", "postcode", "firstname", "surname", "dob", "carregistrationnumber", "policystartdate", "policyquotereference",	"providerquotereference",	"purchasechannel",	"premium",	"policypurchasedate",	"cancellationreason",	"cancellationeffectivedate",	"purchasetype",	"insurerunderwritingpolicy")
-
-        USwitchData1 <- USwitchData1[!duplicated(USwitchData1), ]
-
-        USwitchData1$purchasechannel[USwitchData1$purchasechannel == "O"] <- "Online"
-        USwitchData1$purchasechannel[USwitchData1$purchasechannel != "Online"] <- "Telephone"
-        USwitchData1$cancellationreason[USwitchData1$cancellationreason != "N"] <- "NTU"
-
-        USwitchData1$purchasetype[USwitchData1$purchasetype != "0"] <- "Monthly"
-        USwitchData1$purchasetype[USwitchData1$purchasetype == "0"] <- "Annual"
-        USwitchData1
-      }else{
-        som <- function(x) {
-          as.Date(format(x, "%Y-%m-01"))
-        }
-        
-        MISReport <- AdData[AdData$BTXDtsettled == "" & AdData$BTXInsurer == "MIS Claims" & AdData$BTXPoltype != "HQ",]
-        MISReport <- MISReport[,c("BTXPolref", "BCMName", "BCMAddr1", "BCMAddr2", "BCMAddr3", "BCMAddr4", "BCMPcode", "BCMTel", "BTXDtraised")]
-        MISReport$BTXDtraised <- as.Date(MISReport$BTXDtraised, "%d/%m/%Y")
-        year(MISReport$BTXDtraised) <- year(MISReport$BTXDtraised)+1
-        MISReport$UserID <- substr(MISReport[,1], 1, 6)
-        
-        AdData$CFReg <- ifelse(AdData$CFReg == "", AdData$TW1Regmark, AdData$CFReg)
-        #Data$CFReg[Data$CFReg == ""] <- Data$TW1Regmark[Data$CFReg == ""]
-        
-        VehicleReg <- AdData[AdData$CFReg != "",c("BTXPolref", "CFReg")]
-        VehicleReg <- VehicleReg[!duplicated(VehicleReg), ]
-        VehicleReg$UserID <- substr(VehicleReg$BTXPolref, 1, 6)
-        
-        MISReport <- merge(MISReport, VehicleReg, by = "UserID", all.x=TRUE)
-        MISReport$UserID <- NULL
-        MISReport$BTXPolref <- NULL
-        
-        MISReport <- MISReport[,c("BTXPolref.x", "BCMName", "BCMAddr1", "BCMAddr2", "BCMAddr3", "BCMAddr4", "BCMPcode", "BCMTel", "CFReg", "BTXDtraised")]
-        
-        colnames(MISReport) <- c("Broker Ref", "Name", "Address 1", "Address 2", "Address 3", "Address 4", "Postcode", "Phone Number", "Vehicle Registration", "Policy Renewal Date")
-        
-        MISReport <- MISReport[!duplicated(MISReport), ]
-        MISReport
-      }
+    if(input$reportSelect[1] == "Sales Report"){
+    my_data1 <- subset(my_data[, c(1:(which(colnames(my_data)=="UK.Residency.Years")), (ncol(my_data)-2):ncol(my_data))], my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])
+    my_data1}else if(input$reportSelect[1] == "USwitch Report"){
+      #my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
+      Data1 <- AdData
+      USwitchData <- my_data[grep("APRUS", my_data$ECWebref),]
+      SalesData<- subset(USwitchData, USwitchData$BTXDatecreated >= input$dateRange1[1] & USwitchData$BTXDatecreated <= input$dateRange1[2])
+      CancellationData <- subset(USwitchData, USwitchData$Cancellation != "N")
+      CancellationData <- subset(CancellationData, as.Date(CancellationData$Cancellation, "%d/%m/%Y") >= input$dateRange1[1] & as.Date(CancellationData$Cancellation, "%d/%m/%Y") <= input$dateRange1[2])
+      USwitchData <- rbind(SalesData, CancellationData)
+      USwitchData <- USwitchData [!duplicated(USwitchData ), ]
+      
+      USwitchData$recordtype <- "Sale"
+      USwitchData$salesmonth <- cut(as.Date(USwitchData$BTXDtraised), "month")
+      USwitchData$brand <- "Apricot"
+      USwitchData$surname <- "NA"
+      
+      USwitchData1 <- merge(USwitchData, Data1, by = "BTXPolref", all.x=TRUE)
+      
+      USwitchData1 <- USwitchData1[c("recordtype", "salesmonth", "brand", "BCMEmail.x", "BCMPcode.x", "BCMName", "surname", "BCMDob.x", "CFReg", "BTXDtraised.x", "ECWebref.x", "BTXPolref", "BTXPaymethod.x", "BTXOrigdebt.x", "BTXDatecreated.x", "Cancellation", "Cancellation", "FinanceValue", "BTXInsurer.x")]
+      
+      USwitchData1$surname <- word(USwitchData1$BCMName, -1)
+      USwitchData1$BCMName <- word(USwitchData1$BCMName, -2)
+      
+      colnames(USwitchData1) <- c("recordtype", "salesmonth", "brand", "emailaddress", "postcode", "firstname", "surname", "dob", "carregistrationnumber", "policystartdate", "policyquotereference",	"providerquotereference",	"purchasechannel",	"premium",	"policypurchasedate",	"cancellationreason",	"cancellationeffectivedate",	"purchasetype",	"insurerunderwritingpolicy")
+      
+      USwitchData1 <- USwitchData1[!duplicated(USwitchData1), ]
+      
+      USwitchData1$purchasechannel[USwitchData1$purchasechannel == "O"] <- "Online"
+      USwitchData1$purchasechannel[USwitchData1$purchasechannel != "Online"] <- "Telephone"
+      USwitchData1$cancellationreason[USwitchData1$cancellationreason != "N"] <- "NTU"
+      
+      USwitchData1$purchasetype[USwitchData1$purchasetype != "0"] <- "Monthly"
+      USwitchData1$purchasetype[USwitchData1$purchasetype == "0"] <- "Annual"
+      USwitchData1
+    }else if(input$reportSelect[1] == "MIS Report"){
+      MISReport <- AdData[AdData$BTXDtsettled == "" & AdData$BTXInsurer == "MIS Claims" & AdData$BTXPoltype != "HQ",]
+      MISReport <- MISReport[,c("BTXPolref", "BCMName", "BCMAddr1", "BCMAddr2", "BCMAddr3", "BCMAddr4", "BCMPcode", "BCMTel", "BTXDtraised")]
+      MISReport$BTXDtraised <- as.Date(MISReport$BTXDtraised, "%d/%m/%Y")
+      year(MISReport$BTXDtraised) <- year(MISReport$BTXDtraised)+1
+      MISReport$UserID <- substr(MISReport[,1], 1, 6)
+      
+      AdData$CFReg <- ifelse(AdData$CFReg == "", AdData$TW1Regmark, AdData$CFReg)
+      #Data$CFReg[Data$CFReg == ""] <- Data$TW1Regmark[Data$CFReg == ""]
+      
+      VehicleReg <- AdData[AdData$CFReg != "",c("BTXPolref", "CFReg")]
+      VehicleReg <- VehicleReg[!duplicated(VehicleReg), ]
+      VehicleReg$UserID <- substr(VehicleReg$BTXPolref, 1, 6)
+      
+      MISReport <- merge(MISReport, VehicleReg, by = "UserID", all.x=TRUE)
+      MISReport$UserID <- NULL
+      MISReport$BTXPolref <- NULL
+      
+      MISReport <- MISReport[,c("BTXPolref.x", "BCMName", "BCMAddr1", "BCMAddr2", "BCMAddr3", "BCMAddr4", "BCMPcode", "BCMTel", "CFReg", "BTXDtraised")]
+      
+      colnames(MISReport) <- c("Broker Ref", "Name", "Address 1", "Address 2", "Address 3", "Address 4", "Postcode", "Phone Number", "Vehicle Registration", "Policy Renewal Date")
+      
+      MISReport <- MISReport[!duplicated(MISReport), ]
+      MISReport
+    }else{
+      my_data2 <- 2
+      my_data2
+    }
   })
   
+  #Summary Table Sales Tab
   data6 <- reactive({
     my_data1 <- data()
     my_data2 <- subset(my_data1, BTXPaydt != "")
@@ -139,14 +141,16 @@ shinyServer(function(input, output,session) {
     Totals
   })
   
-  data7 <- reactive({
-    Profit <- data8()
-    Profit[,6] <- currency(Profit[,2])
-    Profit[,2] <- Profit[,6]
-    Profit[,6] <- NULL
-    Profit
-  })
+  ##Sorting by Profit and adding £ symbol
+  # data7 <- reactive({
+  #   Profit <- data8()
+  #   Profit[,6] <- currency(Profit[,2])
+  #   Profit[,2] <- Profit[,6]
+  #   Profit[,6] <- NULL
+  #   Profit
+  # })
   
+  ## Main Graph and Table##
   data8 <- reactive({
     my_data1 <- data()
     my_data2 <- my_data1
@@ -514,7 +518,6 @@ shinyServer(function(input, output,session) {
       }
     }
   })
-  
   observe({
     if (USER$Logged == FALSE) {
       
@@ -531,10 +534,4 @@ shinyServer(function(input, output,session) {
       #print(ui)
     }
   })
-  
-  number <- "6"
-  observe({
-    session$sendCustomMessage(type='myCallbackHandler', number) 
-  })
-  
 })
