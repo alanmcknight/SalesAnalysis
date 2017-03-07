@@ -1,15 +1,14 @@
-library(shinyjs)
-library(googleAuthR)
-library(googleID)
+library('devtools')
+library('googleAuthR')
+library('googleID')
+library(plotly)
 library(shiny)
 library(shinydashboard)
-library(plotly)
 library(leaflet)
 library(lubridate)
 library(stringr)
 
-options(googleAuthR.scopes.selected = c("https://www.googleapis.com/auth/userinfo.email",
-                                        "https://www.googleapis.com/auth/userinfo.profile"))
+options(googleAuthR.scopes.selected = "https://www.googleapis.com/auth/plus.me")
 options("googleAuthR.webapp.client_id" = "769713801246-qk2qhqpqt1k0g8rurm0jkomg73kggj1i.apps.googleusercontent.com")
 options("googleAuthR.webapp.client_secret" = "VTMwnOGWKame7JZPFlV4G7v0")
 options(shiny.port = 1221)
@@ -18,77 +17,61 @@ ui <- navbarPage(
   title = "Apricot Dashboard",
   windowTitle = "Apricot Dashboard",
   tabPanel("Sales Analysis",
-           useShinyjs(),
-           fluidPage(
-             fluidRow(column(12,googleAuthUI("gauth_login")),
-                      br(),
-                      br(),
-                      br()
-             )),
-             mainPanel(
-               dateRangeInput('dateRange',
-                              label = 'Sale Date range (yyyy-mm-dd): ',
-                              start = "2017-01-01", end = Sys.Date()
-               ),
-               htmlOutput("selectUI2"),
-               dataTableOutput(outputId ="my_output_data6"),
-               fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnValue", "Age", "Age.Range", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BTXExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "Day.of.Week", "Discount", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Licence.Years", "Month", "PaymentMethod", "Price.Returned.Range", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "Quote.Date", "Quote.Day", "Quote.Hour", "Quote.Reference", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
-                              multiple = TRUE, options = list(maxItems = 3))), column(4, selectInput("plotFilter", "Select Performance Metric", choices = c("Total Profit", "Average Profit", "Cancellations", "Sales Cancellation Percentage", "Sales"), selected = "Sales"))),
-               fluidRow(column(
-                 plotlyOutput("dailyPlot2"),
-                 selectizeInput("dataset4", "Table Summary Type", choices = c("Count", "Mean", "Sum", "% Uptake"), selected = "Sum"),
-                 dataTableOutput(outputId ="my_output_data8"), width = 12), width = 14),
-               br(),
-               downloadButton("downloadData", "Download Sales Report"),           
-               br(),
-               plotlyOutput("dailyPlot3"),
-               br(),
-               br()
-             )
-           ),
-  tabPanel("Reports",
-           dateRangeInput('dateRange1',
-                          label = 'Sale Date range (yyyy-mm): ',
-                          start = "2017-01-01", end = Sys.Date()),
-           selectInput("reportSelect", "Select Report", choices = c("ALPS LE Report", "Call Connections Report", "MIS Report", "Sales Report", "USwitch Report", "Quotezone Report", "XS Cover Report"), selected = "Sales Report"),
-           downloadButton("reportDownload", "Download Report"),
-           br(),
-           br(),
-           dataTableOutput(outputId ="my_output_data2")
-  ), 
-  tabPanel("Executive Performance",
-           dateRangeInput('dateRange2',
-                          label = 'Sale Date range (yyyy-mm): ',
-                          start = "2017-01-01", end = Sys.Date()), 
-           selectInput("plotFilter2", "Select Performance Metric", choices = c("Add-Ons", "Cancellations", "Sales", "Total Profit"), selected = "Sales"),
-           plotlyOutput("dailyPlot10"),
-           dataTableOutput(outputId ="my_output_data10")
-  )
-)
+  fluidRow(column(1, gar_auth_jsUI("auth_demo", login_text = "Log In")), column(2, p("Logged in as: ", textOutput("user_name")))), 
+br(),
+  mainPanel(
+    dateRangeInput('dateRange',
+                   label = 'Sale Date range: ',
+                   start = "2017-01-01", end = Sys.Date()
+    ),
+    htmlOutput("selectUI2"),
+    dataTableOutput(outputId ="my_output_data6"),
+  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnValue", "Age", "Age.Range", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BTXExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "Day.of.Week", "Discount", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Licence.Years", "Month", "PaymentMethod", "Price.Returned.Range", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "Quote.Date", "Quote.Day", "Quote.Hour", "Quote.Reference", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
+                                    multiple = TRUE, options = list(maxItems = 3))), column(4, selectInput("plotFilter", "Select Performance Metric", choices = c("Total Profit", "Average Profit", "Cancellations", "Sales Cancellation Percentage", "Sales"), selected = "Sales"))),
+  fluidRow(column(
+    plotlyOutput("dailyPlot2"),
+    selectizeInput("dataset4", "Table Summary Type", choices = c("Count", "Mean", "Sum", "% Uptake"), selected = "Sum"),
+    dataTableOutput(outputId ="my_output_data8"), width = 12), width = 14),
+  br(),
+  downloadButton("downloadData", "Download Sales Report"),           
+  br(),
+  plotlyOutput("dailyPlot3"),
+  br(),
+  br()
+  #verbatimTextOutput('session_info')
+)),
+tabPanel("Reports",
+         dateRangeInput('dateRange1',
+                        label = 'Sale Date range: ',
+                        start = Sys.Date()-1, end = Sys.Date()-1),
+         selectInput("reportSelect", "Select Report", choices = c("ALPS LE Report", "Call Connections Report", "Daily Report", "MIS Report", "Sales Report", "USwitch Report", "Quotezone Report", "XS Cover Report"), selected = "Daily Report"),
+         downloadButton("reportDownload", "Download Report"),
+         br(),
+         br(),
+         dataTableOutput(outputId ="my_output_data2")
+), 
+tabPanel("Executive Performance",
+         dateRangeInput('dateRange2',
+                        label = 'Sale Date range: ',
+                        start = Sys.Date()-1, end = Sys.Date()-1), 
+         htmlOutput("selectUI3"),
+         selectInput("plotFilter2", "Select Performance Metric", choices = c("Add-Ons", "Cancellations", "Sales", "Total Profit"), selected = "Sales"),
+         plotlyOutput("dailyPlot10"),
+         dataTableOutput(outputId ="my_output_data10")
+))
 
-server <- function(input, output, session) {
-  ## Global variables needed throughout the app
-  rv <- reactiveValues(
-    login = FALSE
-  )
+server <- shinyServer(function(input, output, session) {
+  access_token <- callModule(gar_auth_js, "auth_demo")
   
-  ## Authentication
-  accessToken <- callModule(googleAuth, "gauth_login",
-                            login_class = "btn btn-primary",
-                            logout_class = "btn btn-primary", approval_prompt = "force")
-  userDetails <- reactive({
+  ## to use in a shiny app:
+  user_details <- reactive({
     validate(
-      need(accessToken(), "not logged in")
+      need(access_token(), "Please Log In")
     )
-    rv$login <- TRUE
-    with_shiny(get_user_info, shiny_access_token = accessToken())
+    with_shiny(get_user_info, shiny_access_token = access_token())
   })
   
-  ## Users
-  googleAuthR::gar_auth()
-  user <- get_user_info()
-  the_list <- whitelist(user, c("mcknightalan@gmail.com", "alan.seopa@gmail.com"))
-  
+  users <- c("104921241849775714986", "101460119938975360500", "101914728899788440454", "102124089845388212018")
   
   my_data <- read.csv("ApricotSalesMaster2.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
@@ -97,36 +80,39 @@ server <- function(input, output, session) {
   
   filterList1 <- colnames(my_data)
   filterList2 <- c("All", sort(unique(my_data$Product)))
-
+  
   percent <- function(x, digits = 2, format = "f") {
     paste0(formatC(100 * x, format = format, digits = digits), "%")
   }
   currency <- function(x) {
-    paste("$",format(x, big.mark=","),sep="")
+    paste("£",format(x, big.mark=","),sep="")
   }
   specify_decimal <- function(x, k) format(round(x, k), nsmall=k)
   
   data <- reactive({
     my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
-    # if(input$filterName != "All"){
-    #   my_data1 <- subset(my_data1, my_data1$Product == input$filterName)
-    # }
+     if(input$filterName != "All"){
+       my_data1 <- subset(my_data1, my_data1$Product == input$filterName)
+     }
     my_data1
   })
   
   data1 <- reactive({
     my_data1 <- subset(my_data[, c(1:(which(colnames(my_data)=="UK.Residency.Years")), (ncol(my_data)-2):ncol(my_data))], my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
-    # if(input$filterName != "All"){
-    #   my_data1 <- subset(my_data1, my_data1$Product == input$filterName)
-    # }
+    if(input$filterName != "All"){
+      my_data1 <- subset(my_data1, my_data1$Product == input$filterName)
+    }
     my_data1
   })
   
   data3 <- reactive({
     my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange2[1] & my_data$BTXDatecreated <= input$dateRange2[2])
+    if(input$filterName3 != "All"){
+      my_data1 <- subset(my_data1, my_data1$Product == input$filterName3)
+    }
+    my_data1
     my_data1
   })
-  
   
   ## Reporting ##
   data2 <- reactive({
@@ -261,8 +247,33 @@ server <- function(input, output, session) {
         colnames(XSReport) <- c("Reference",	"Reason for Issue",	"Inception Date",	"Termination Date",	"Assured",	"Address1",	"Address2",	"Address3",	"Address4",	"Postcode",	"Telno",	"Vehicle Reg",	"Cover",	"Premium inc IPT")
         XSReport
       }else if(input$reportSelect[1] == "Quotezone Report"){
-        my_data2 <- 2
-        my_data2
+        QZData <- subset(my_data, (my_data$Source == "Quotezone" | !is.na(my_data$Quote.Reference)) & BTXTrantype == "New Business")
+        SalesData<- subset(QZData, QZData$BTXDatecreated >= input$dateRange1[1] & QZData$BTXDatecreated <= input$dateRange1[2])
+        SalesData$Cancellation <- "N"
+
+        CancellationsData<- subset(QZData, as.Date(QZData$Cancellation,  "%d/%m/%Y") >= input$dateRange1[1] & as.Date(QZData$Cancellation,  "%d/%m/%Y") <= input$dateRange1[2] & QZData$Cancellation != "N")
+        QuotezoneData <- rbind(SalesData, CancellationsData)
+        QuotezoneData$Brand.ID[grepl("PC", QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- "2475"
+        QuotezoneData$Brand.ID[grepl("HQ", QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- "3489"
+        QuotezoneData$Brand.ID[grepl("MC", QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- "3350"
+        QuotezoneData$Brand.ID[grepl(c("CV|TW"), QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- "3181"
+        QuotezoneData$SingleCombined <- ""
+        QuotezoneData <- QuotezoneData[c("Brand.ID", "FIRST.NAME", "LAST.NAME", "BCMDob", "BCMPcode", "BCMEmail", "Quote.Date", "BTXDtraised", "BTXDatecreated", "SingleCombined", "BTXOrigdebt", "Cancellation", "BTXPolref")]
+        colnames(QuotezoneData) <- c("Brand ID", "First Name", "Sur-name", "DOB", "Post-code", "Email", "Quote Date", "Inception Date", "Quote Sale Date", "Single/Combined", "Price Paid", "Cancelled", "BTXPolref" )
+
+        QuotezoneData$Cancelled <- gsub('Cancellation', 'Y', QuotezoneData$Cancelled)
+        rownames(QuotezoneData) <- NULL
+        QuotezoneData[is.na(QuotezoneData)] <- ""
+        QuotezoneData[QuotezoneData$Cancelled != "N", "Cancelled"] <- "Y"
+
+        QuotezoneData
+      }else if(input$reportSelect[1] == "Daily Report"){
+        report <- subset(my_data, (my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])| (as.Date(my_data$Cancellation,  "%d/%m/%Y") >= input$dateRange1[1] & as.Date(my_data$Cancellation,  "%d/%m/%Y") <= input$dateRange1[2]))
+        #reportCancellations <- subset(my_data, as.Date(my_data$Cancellation,  "%d/%m/%Y") == (Sys.Date()-1))
+        report <- report [!duplicated(report), ]
+        report <- report[order(report$Cancellation, report$BTXTrantype),]
+        report <- report[c("BTXDatecreated", "Product", "Executive", "BTXTrantype", "TotalValue", "TrafficCost", "AddOnValue", "FinanceValue", "Discount", "Cancellation")]
+        report
       }
   })
   
@@ -547,13 +558,13 @@ server <- function(input, output, session) {
     my_data10 <- data3()
     #my_data11 <- my_data10
     my_data10 <- subset(my_data10,  BTXPaydt != "")
-
+    
     Staff <- aggregate(as.numeric(my_data10$TotalValue), by=list(Category=my_data10$Executive), FUN=sum)
     Sales <- my_data10[ which(my_data10$Cancellation=='N'),]
     CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales$Executive), FUN=length)
     names(CountSales)[2]<-"Count"
     Staff$Sales <- CountSales$Count[match(Staff$Category, CountSales$Category)]
-    Cancellations <- data()[ which(data()$Cancellation!='N'),]
+    Cancellations <- data3()[ which(data3()$Cancellation!='N'),]
     if(nrow(Cancellations) >0){
       CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations$Executive), FUN=length)
       #names(CountSales)[2]<-"Count"
@@ -562,8 +573,8 @@ server <- function(input, output, session) {
       Staff$Cancellations <- CountCancellations$Count[match(Staff$Category, CountCancellations$Category)]
     } else{Staff$Cancellations <- 0}
     Staff[is.na(Staff)] <- 0
-    Staff[,5] <- as.numeric(Staff[,4])/(as.numeric(Staff[,3])+as.numeric(Staff[,4]))*100
-    Staff[,6] <- Staff[,2]/(as.numeric(Staff[,3])+as.numeric(Staff[,4]))
+    Staff[,5] <- round(as.numeric(Staff[,4])/(as.numeric(Staff[,3])+as.numeric(Staff[,4]))*100, 2)
+    Staff[,6] <- round(Staff[,2]/(as.numeric(Staff[,3])+as.numeric(Staff[,4])), 2)
     AddOnCount1 <- subset(Sales, Sales$AddOnCount != 0)
     if(nrow(AddOnCount1) >0){
       CountAddOns <- aggregate(as.numeric(AddOnCount1$AddOnCount), by=list(Category=AddOnCount1$Executive), FUN=sum)
@@ -574,8 +585,6 @@ server <- function(input, output, session) {
     } else{Staff$AddOns <- 0}
     #    Profit$CancellationPercentage <- as.numeric(Profit$Cancellations)/(as.numeric(Profit$Sales)+as.numeric(Profit$Cancellations))
     Staff[,2] <- round(Staff[,2], 2)
-    Staff[,5] <- round(Staff[,5], 2)
-    Staff[,6] <- round(Staff[,6], 2)
     names(Staff)[1]<-"BTXDatecreated"
     names(Staff)[2]<-"Total Profit"
     names(Staff)[5]<-"Sales Cancellation Percentage"
@@ -585,128 +594,127 @@ server <- function(input, output, session) {
     Staff[is.na(Staff)] <- 0
     Staff
   })
-  
-  if(the_list){
-  output$selectUI2 <- renderUI({
-    selectInput("filterName", "Select Product", filterList2)
-  })
-  
-  output$dailyPlot2 <- renderPlotly({
-    if(length(input$dataset3) == 0){
-      plot_ly(
-        x = data9()[,1],
-        y = data9()[,input$plotFilter],
-        name = "Performance",
-        type = "bar"
-      )}
-    else if(length(input$dataset3) == 1){
-      plot_ly(
-        x = data8()[,1],
-        y = data8()[,input$plotFilter],
-        name = "Performance",
-        type = "bar"
-      )
-    } else if(length(input$dataset3) > 1){
-      plot_ly(data8()) %>%
-        add_trace(data = data8(), type = "bar", x = data8()[,1], y = data8()[,input$plotFilter], color = data8()[,2]) %>%
-        layout(barmode = "stack")
-    }
-  })
-  
-  output$dailyPlot3 <- renderPlotly({
-    if(length(input$dataset3) == 0){
-      plot_ly(
-        x = data9()[,1],
-        y = data9()[,input$plotFilter],
-        name = "Performance",
-        type = "bar"
-      )}
-    else if(length(input$dataset3) == 1){
-      # plot_ly(data8(), x = ~data8()[,1], y = ~data8()[,4], type = 'bar', name = 'Gross Profit') %>%
-      #   add_trace(y = ~data8()[,10], name = 'Y1Profit') %>%
-      #   add_trace(y = ~data8()[,11], name = 'Y2Profit') %>%
-      #   layout(yaxis = list(title = 'Sum'), xaxis = list(title = ""), barmode = 'group')
-      
-      p <- plot_ly(data8(), x = ~data8()[,1], y = ~data8()[,4], type = 'scatter', mode = 'lines', name = 'Gross Profit') %>%
-        add_trace(y = ~data8()[,10], name = 'Y1Profit', mode = 'lines+markers') %>%
-        add_trace(y = ~data8()[,11], name = 'Y2Profit', mode = 'lines+markers') %>%
-        layout(yaxis = list(title = 'Sum'), xaxis = list(title = ""))
-      p
-      
-      # x = data8()[,1],
-      # y = data8()[,Sales],
-      # name = "Performance",
-      # type = "bar"
-    } else if(length(input$dataset3) > 1){
-      plot <- data8()
-      plot <- subset(plot, plot[,2] == "New Business")
-      p <- plot_ly(plot, x = ~plot[,1], y = ~plot[,5], type = 'scatter', mode = 'lines', name = 'Gross Profit') %>%
-        add_trace(y = ~plot[,11], name = 'Y1Profit', mode = 'lines+markers') %>%
-        add_trace(y = ~plot[,12], name = 'Y2Profit', mode = 'lines+markers') %>%
-        layout(yaxis = list(title = 'Sum'), xaxis = list(title = ""))
-      p
-    }
-  })
-  
-  output$downloadData <- downloadHandler(
-    filename = function() { 'SaleData.csv' }, content = function(file) {
-      write.csv(data1(), file, row.names = FALSE)
-    }
-  )
-  output$reportDownload <- downloadHandler(
-    filename = function() { paste0(input$reportSelect[1],".csv") }, content = function(file) {
-      write.csv(data2(), file, row.names = FALSE)
-    }
-  )
-  
-  output$my_output_data6 <- renderDataTable({data6()}, options =list(paging = FALSE, searching = FALSE, info = FALSE))
-  output$my_output_data8 <- renderDataTable({
-    if(length(input$dataset3) > 0){data8()[,1:(ncol(data8())-2)]}
-  })
-  
-  
-  output$my_output_data2 <- renderDataTable({data2()}, options =list(searching = T, info = T))
-  
-  output$my_output_data10 <- renderDataTable({data10()}, options =list(searching = T, info = T))
-  
-  output$dailyPlot10 <- renderPlotly({
+
+    output$selectUI2 <- renderUI({
+      if(user_details()$id %in% users){
+        selectInput("filterName", "Select Product", filterList2)
+      }
+    })
+    
+    output$selectUI3 <- renderUI({
+      if(user_details()$id %in% users){
+        selectInput("filterName3", "Select Product", filterList2)
+      }
+    })
+
+    output$my_output_data6 <- renderDataTable({
+      if(user_details()$id %in% users){
+      data6()}}, options =list(paging = FALSE, searching = FALSE, info = FALSE))
+    
+    output$dailyPlot2 <- renderPlotly({
+      if(user_details()$id %in% users){
+      if(length(input$dataset3) == 0){
+        plot_ly(
+          x = data9()[,1],
+          y = data9()[,input$plotFilter],
+          name = "Performance",
+          type = "bar"
+        )}
+      else if(length(input$dataset3) == 1){
+        plot_ly(
+          x = data8()[,1],
+          y = data8()[,input$plotFilter],
+          name = "Performance",
+          type = "bar"
+        )
+      } else if(length(input$dataset3) > 1){
+        plot_ly(data8()) %>%
+          add_trace(data = data8(), type = "bar", x = data8()[,1], y = data8()[,input$plotFilter], color = data8()[,2]) %>%
+          layout(barmode = "stack")
+      }}
+    })
+    
+    output$dailyPlot3 <- renderPlotly({
+      if(user_details()$id %in% users){
+      if(length(input$dataset3) == 0){
+        plot_ly(
+          x = data9()[,1],
+          y = data9()[,input$plotFilter],
+          name = "Performance",
+          type = "bar"
+        )}
+      else if(length(input$dataset3) == 1){
+        p <- plot_ly(data8(), x = ~data8()[,1], y = ~data8()[,4], type = 'scatter', mode = 'lines', name = 'Gross Profit') %>%
+          add_trace(y = ~data8()[,10], name = 'Y1Profit', mode = 'lines+markers') %>%
+          add_trace(y = ~data8()[,11], name = 'Y2Profit', mode = 'lines+markers') %>%
+          layout(yaxis = list(title = 'Sum'), xaxis = list(title = ""))
+        p
+      } else if(length(input$dataset3) > 1){
+        plot <- data()
+        p <- plot_ly(data = plot, type = "scatter", x = ~plot[[input$dataset3[1]]], y = ~plot$TotalValue, color = ~plot[[input$dataset3[2]]])%>%
+          layout(                        # all of layout's properties: /r/reference/#layout
+            title = "Individual Policy View", # layout's title: /r/reference/#layout-title
+            xaxis = list(           # layout's xaxis is a named list. List of valid keys: /r/reference/#layout-xaxis
+              title = input$dataset3[1],      # xaxis's title: /r/reference/#layout-xaxis-title
+              showgrid = F), 
+            yaxis = list(           # layout's yaxis is a named list. List of valid keys: /r/reference/#layout-yaxis
+              title = "Total Value")
+            )
+        p
+      }
+      }
+    })
+    
+    output$downloadData <- downloadHandler(
+      filename = function() { 'SaleData.csv' }, content = function(file) {
+        if(user_details()$id %in% users){
+        write.csv(data1(), file, row.names = FALSE)
+      }}
+    )
+    
+    output$reportDownload <- downloadHandler(
+      filename = function() { paste0(input$reportSelect[1],".csv") }, content = function(file) {
+        if(user_details()$id %in% users){
+        write.csv(data2(), file, row.names = FALSE)
+        }
+      }
+    )
+    
+    output$my_output_data6 <- renderDataTable({
+      if(user_details()$id %in% users){
+      data6()}}, options =list(paging = FALSE, searching = FALSE, info = FALSE))
+    output$my_output_data8 <- renderDataTable({
+      if(user_details()$id %in% users){
+      if(length(input$dataset3) > 0){data8()[,1:(ncol(data8())-2)]}}
+    })
+    
+    
+    output$my_output_data2 <- renderDataTable({
+      if(user_details()$id %in% users){
+      data2()}}, options =list(searching = T, info = T))
+    
+    output$my_output_data10 <- renderDataTable({
+      if(user_details()$id %in% users){
+      data10()}}, options =list(searching = T, info = T))
+    
+    output$dailyPlot10 <- renderPlotly({
+      if(user_details()$id %in% users){
       plot_ly(
         labels = data10()[,1],
         values = data10()[,input$plotFilter2],
         type = "pie") %>%
         layout(xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-        yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
-  })
-  
-  }
-  
-  output$display_username <- renderText({
+               yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+    }})
+    
+  output$user_name <- renderText({
     validate(
-      need(userDetails(), "getting user details")
+      need(user_details(), "getting user details")
     )
-    if(the_list){
-      a<- "You are on the list."
-    }else{
-      a <- "If you're not on the list, you're not getting in."
-    }
-    a
+    as.character(user_details()$id)
   })
   
-  ## Display user's Google display name after successful login
-  output$display_username2 <- renderText({
-    validate(
-      need(userDetails(), "getting user details")
-    )
-    userDetails()$displayName
-  })
-  
-  ## Workaround to avoid shinyaps.io URL problems
-  observe({
-    if (rv$login) {
-      shinyjs::onclick("gauth_login-googleAuthUi",
-                       shinyjs::runjs("window.location.href = 'https://seopa.shinyapps.io/SalesAnalysis';"))
-    }
-  })
-}
+  output$session_info <- renderPrint(session_info(), width = 120)
+})
 
 shinyApp(ui = ui, server = server)
