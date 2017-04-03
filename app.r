@@ -13,10 +13,13 @@ options("googleAuthR.webapp.client_id" = "769713801246-qk2qhqpqt1k0g8rurm0jkomg7
 options("googleAuthR.webapp.client_secret" = "VTMwnOGWKame7JZPFlV4G7v0")
 options(shiny.port = 1221)
 
+#shiny::runApp( launch.browser=T, port=1221)
 ui <- navbarPage(
-  title = "Apricot Dashboard",
+  title = div(img(src="Apricot3.png"), "Apricot Dashboard"),
+  #title = "Apricot Dashboard",
   windowTitle = "Apricot Dashboard",
   tabPanel("Sales Analysis",
+           #img(src='Apricot.png', align = "right"),
   fluidRow(column(1, gar_auth_jsUI("auth_demo", login_text = "Log In")), column(2, p("Logged in as: ", textOutput("user_name")))), 
 br(),
   mainPanel(
@@ -26,7 +29,7 @@ br(),
     ),
     htmlOutput("selectUI2"),
     dataTableOutput(outputId ="my_output_data6"),
-  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnValue", "Age", "Age.Range", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BTXExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "Day.of.Week", "Discount", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Licence.Years", "Month", "PaymentMethod", "Price.Returned.Range", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "Quote.Date", "Quote.Day", "Quote.Hour", "Quote.Reference", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
+  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnValue", "Age", "Age.Range", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BTXExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "CancellationDate", "Day.of.Week", "Discount", "Doou.normally.pay.forour.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "Hour.Of.Day", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Licence.Years", "Month", "MonthStartDate", "PaymentMethod", "Price.Position.1", "Price.Position.2", "Price.Returned.Range", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "QAActivequotedate", "QAActivequotetime", "Quote.Date", "Quote.Reference", "Selected.Provider.Price", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "Week.of.Year",  "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
                                     multiple = TRUE, options = list(maxItems = 3))), column(4, selectInput("plotFilter", "Select Performance Metric", choices = c("Total Profit", "Average Profit", "Cancellations", "Sales Cancellation Percentage", "Sales"), selected = "Sales"))),
   fluidRow(column(
     plotlyOutput("dailyPlot2"),
@@ -44,8 +47,9 @@ tabPanel("Reports",
          dateRangeInput('dateRange1',
                         label = 'Sale Date range: ',
                         start = Sys.Date()-1, end = Sys.Date()-1),
-         selectInput("reportSelect", "Select Report", choices = c("ALPS LE Report", "Call Connections Report", "Daily Report", "MIS Report", "Sales Report", "USwitch Report", "Quotezone Report", "XS Cover Report"), selected = "Daily Report"),
+         selectInput("reportSelect", "Select Report", choices = c("ALPS LE Report", "Call Connections Report", "Daily Report", "MIS Report", "Sales Report", "USwitch Report", "Pending Renewals", "Quotezone Report", "XS Cover Report"), selected = "Daily Report"),
          downloadButton("reportDownload", "Download Report"),
+         downloadButton("report", "Sales Report"),
          br(),
          br(),
          dataTableOutput(outputId ="my_output_data2")
@@ -53,12 +57,14 @@ tabPanel("Reports",
 tabPanel("Executive Performance",
          dateRangeInput('dateRange2',
                         label = 'Sale Date range: ',
-                        start = Sys.Date()-1, end = Sys.Date()-1), 
+                        start = Sys.Date()-7, end = Sys.Date()-1), 
          htmlOutput("selectUI3"),
          selectInput("plotFilter2", "Select Performance Metric", choices = c("Add-Ons", "Cancellations", "Sales", "Total Profit"), selected = "Sales"),
          plotlyOutput("dailyPlot10"),
-         dataTableOutput(outputId ="my_output_data10")
-))
+         dataTableOutput(outputId ="my_output_data10")),
+tabPanel(title=HTML("<li><a href='https://docs.google.com/spreadsheets/d/17UgYlEAt5rChM9_diD5833MtiBviLuTtfCKFC_gt_Ng/edit#gid=0' target='_blank'>Updates & Suggestions"))
+)
+
 
 server <- shinyServer(function(input, output, session) {
   access_token <- callModule(gar_auth_js, "auth_demo")
@@ -71,12 +77,15 @@ server <- shinyServer(function(input, output, session) {
     with_shiny(get_user_info, shiny_access_token = access_token())
   })
   
-  users <- c("104921241849775714986", "101460119938975360500", "101914728899788440454", "102124089845388212018")
+  users <- c("104921241849775714986", "101460119938975360500", "101914728899788440454", "102124089845388212018", "106112761530234792467", "109094592148669236498")
   
   my_data <- read.csv("ApricotSalesMaster2.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
+  my_data$CancellationDate <- as.Date( as.character(my_data$CancellationDate), "%Y-%m-%d")
   
   AdData <- read.csv("AdditionalReport.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  endorsements <- read.csv("Endorsements.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  endorsements$BTXDatecreated.x <- as.Date( as.character(endorsements$BTXDatecreated.x), "%d/%m/%Y")
   
   filterList1 <- colnames(my_data)
   filterList2 <- c("All", sort(unique(my_data$Product)))
@@ -111,20 +120,19 @@ server <- shinyServer(function(input, output, session) {
       my_data1 <- subset(my_data1, my_data1$Product == input$filterName3)
     }
     my_data1
-    my_data1
   })
   
   ## Reporting ##
   data2 <- reactive({
     if(input$reportSelect[1] == "Sales Report"){
-      my_data1 <- subset(my_data[, c(1:(which(colnames(my_data)=="UK.Residency.Years")), (ncol(my_data)-2):ncol(my_data))], my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])
+      my_data1 <- subset(my_data[, c(1:(which(colnames(my_data)=="Price.Position.1")), which(colnames(my_data)=="Price.Position.2"), which(colnames(my_data)=="Price.Position.3"), (ncol(my_data)-2):ncol(my_data))], my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])
       my_data1}else if(input$reportSelect[1] == "USwitch Report"){
         #my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
         Data1 <- AdData
         USwitchData <- my_data[grep("APRUS", my_data$ECWebref),]
         SalesData<- subset(USwitchData, USwitchData$BTXDatecreated >= input$dateRange1[1] & USwitchData$BTXDatecreated <= input$dateRange1[2])
         CancellationData <- subset(USwitchData, USwitchData$Cancellation != "N")
-        CancellationData <- subset(CancellationData, as.Date(CancellationData$Cancellation, "%d/%m/%Y") >= input$dateRange1[1] & as.Date(CancellationData$Cancellation, "%d/%m/%Y") <= input$dateRange1[2])
+        CancellationData <- subset(CancellationData, as.Date(CancellationData$CancellationDate, "%Y-%m-%d") >= input$dateRange1[1] & as.Date(CancellationData$CancellationDate, "%Y-%m-%d") <= input$dateRange1[2])
         USwitchData <- rbind(SalesData, CancellationData)
         USwitchData <- USwitchData [!duplicated(USwitchData ), ]
         
@@ -135,7 +143,7 @@ server <- shinyServer(function(input, output, session) {
         
         USwitchData1 <- merge(USwitchData, Data1, by = "BTXPolref", all.x=TRUE)
         
-        USwitchData1 <- USwitchData1[c("recordtype", "salesmonth", "brand", "BCMEmail.x", "BCMPcode.x", "BCMName", "surname", "BCMDob.x", "CFReg", "BTXDtraised.x", "ECWebref.x", "BTXPolref", "BTXPaymethod.x", "BTXOrigdebt.x", "BTXDatecreated.x", "Cancellation", "Cancellation", "FinanceValue", "BTXInsurer.x")]
+        USwitchData1 <- USwitchData1[c("recordtype", "salesmonth", "brand", "BCMEmail.x", "BCMPcode.x", "BCMName", "surname", "BCMDob.x", "CFReg", "BTXDtraised.x", "ECWebref.x", "BTXPolref", "BTXPaymethod.x", "BTXOrigdebt.x", "BTXDatecreated.x", "Cancellation", "CancellationDate", "FinanceValue", "BTXInsurer.x")]
         
         USwitchData1$surname <- word(USwitchData1$BCMName, -1)
         USwitchData1$BCMName <- word(USwitchData1$BCMName, -2)
@@ -159,7 +167,7 @@ server <- shinyServer(function(input, output, session) {
         CCData <- my_data[grep("APRCC", my_data$ECWebref),]
         SalesData<- subset(CCData, CCData$BTXDatecreated >= input$dateRange1[1] & CCData$BTXDatecreated <= input$dateRange1[2])
         CancellationData <- subset(CCData, CCData$Cancellation != "N")
-        CancellationData <- subset(CancellationData, as.Date(CancellationData$Cancellation, "%d/%m/%Y") >= input$dateRange1[1] & as.Date(CancellationData$Cancellation, "%d/%m/%Y") <= input$dateRange1[2])
+        CancellationData <- subset(CancellationData, as.Date(CancellationData$CancellationDate, "%Y-%m-%d") >= input$dateRange1[1] & as.Date(CancellationData$Cancellation, "%Y-%m-%d") <= input$dateRange1[2])
         CCData <- rbind(SalesData, CancellationData)
         CCData <- CCData [!duplicated(CCData ), ]
         
@@ -251,43 +259,101 @@ server <- shinyServer(function(input, output, session) {
         SalesData<- subset(QZData, QZData$BTXDatecreated >= input$dateRange1[1] & QZData$BTXDatecreated <= input$dateRange1[2])
         SalesData$Cancellation <- "N"
 
-        CancellationsData<- subset(QZData, as.Date(QZData$Cancellation,  "%d/%m/%Y") >= input$dateRange1[1] & as.Date(QZData$Cancellation,  "%d/%m/%Y") <= input$dateRange1[2] & QZData$Cancellation != "N")
+        CancellationsData<- subset(QZData, as.Date(QZData$CancellationDate,  "%Y-%m-%d") >= input$dateRange1[1] & as.Date(QZData$CancellationDate,  "%Y-%m-%d") <= input$dateRange1[2] & QZData$Cancellation != "N")
         QuotezoneData <- rbind(SalesData, CancellationsData)
         QuotezoneData$Brand.ID[grepl("PC", QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- "2475"
         QuotezoneData$Brand.ID[grepl("HQ", QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- "3489"
         QuotezoneData$Brand.ID[grepl("MC", QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- "3350"
         QuotezoneData$Brand.ID[grepl(c("CV|TW"), QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- "3181"
-        QuotezoneData$SingleCombined <- ""
+        QuotezoneData$SingleCombined[grepl("HQ", QuotezoneData$BTXPoltype, ignore.case=FALSE)] <- QuotezoneData$TrafficCost[grepl("HQ", QuotezoneData$BTXPoltype, ignore.case=FALSE)]
         QuotezoneData <- QuotezoneData[c("Brand.ID", "FIRST.NAME", "LAST.NAME", "BCMDob", "BCMPcode", "BCMEmail", "Quote.Date", "BTXDtraised", "BTXDatecreated", "SingleCombined", "BTXOrigdebt", "Cancellation", "BTXPolref")]
-        colnames(QuotezoneData) <- c("Brand ID", "First Name", "Sur-name", "DOB", "Post-code", "Email", "Quote Date", "Inception Date", "Quote Sale Date", "Single/Combined", "Price Paid", "Cancelled", "BTXPolref" )
+        colnames(QuotezoneData) <- c("Brand ID", "First Name", "Sur-name", "DOB", "Post-code", "Email", "Quote Date", "Inception Date", "Quote Sale Date", "SingleCombined", "Price Paid", "Cancelled", "BTXPolref" )
 
         QuotezoneData$Cancelled <- gsub('Cancellation', 'Y', QuotezoneData$Cancelled)
         rownames(QuotezoneData) <- NULL
         QuotezoneData[is.na(QuotezoneData)] <- ""
         QuotezoneData[QuotezoneData$Cancelled != "N", "Cancelled"] <- "Y"
-
+        QuotezoneData[QuotezoneData$SingleCombined == "36.5", "SingleCombined"] <- "S"
+        QuotezoneData[QuotezoneData$SingleCombined == "42.5", "SingleCombined"] <- "C"
         QuotezoneData
+        
       }else if(input$reportSelect[1] == "Daily Report"){
-        report <- subset(my_data, (my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])| (as.Date(my_data$Cancellation,  "%d/%m/%Y") >= input$dateRange1[1] & as.Date(my_data$Cancellation,  "%d/%m/%Y") <= input$dateRange1[2]))
+        report <- subset(my_data, (my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])| (my_data$CancellationDate >= input$dateRange1[1] & my_data$CancellationDate <= input$dateRange1[2]))
         #reportCancellations <- subset(my_data, as.Date(my_data$Cancellation,  "%d/%m/%Y") == (Sys.Date()-1))
         report <- report [!duplicated(report), ]
         report <- report[order(report$Cancellation, report$BTXTrantype),]
-        report <- report[c("BTXDatecreated", "Product", "Executive", "BTXTrantype", "TotalValue", "TrafficCost", "AddOnValue", "FinanceValue", "Discount", "Cancellation")]
+        report <- report[c("BTXPolref", "BTXDatecreated", "Product", "Executive", "BTXTrantype", "TotalValue", "TrafficCost", "AddOnValue", "FinanceValue", "Discount", "Cancellation")]
+        report
+      }else if(input$reportSelect[1] == "Pending Renewals"){
+        report <- subset(my_data, (my_data$BTXTrantype == "Pending Renewal"))
+        #reportCancellations <- subset(my_data, as.Date(my_data$Cancellation,  "%d/%m/%Y") == (Sys.Date()-1))
+        report <- report[order(report$BTXDatecreated, report$Cancellation, report$BTXTrantype),]
+        report <- report[c("BTXPolref", "BTXDatecreated", "Product", "Executive", "BTXTrantype", "TotalValue", "TrafficCost", "AddOnValue", "FinanceValue", "Discount", "Cancellation")]
         report
       }
   })
   
+  
+  #Daily Report Content
+  data4 <- reactive({
+    #report <- subset(my_data, (my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2]) | (as.Date(my_data$Cancellation,  "%Y-%m-%d") >= input$dateRange1[1] & as.Date(my_data$Cancellation,  "%Y-%m-%d") <= input$dateRange1[2]))
+    report <- subset(my_data, (my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])| (my_data$CancellationDate >= input$dateRange1[1] & my_data$CancellationDate <= input$dateRange1[2]))
+    #reportCancellations <- subset(my_data, as.Date(my_data$Cancellation,  "%d/%m/%Y") == (Sys.Date()-1))
+    report <- report [!duplicated(report), ]
+    report <- report[order(report$Cancellation, report$BTXTrantype),]
+    report <- report[c("BTXPolref", "BTXDatecreated", "Product", "Executive", "BTXTrantype", "TrafficCost", "AddOnValue", "FinanceValue", "Discount", "TotalValue", "Cancellation")]
+    report1 <- report[1, ]
+    report1[1,] <- NA
+    report <- rbind(report, report1)
+    report[nrow(report),6:10] <- colSums(report[1:(nrow(report)-1),6:10], dims = 1)
+    #report[nrow(report),c(1:4,10)] <- NULL
+    report <- sapply(report, as.character)
+    report[is.na(report)] <- " "
+    report
+  })
+  
+  data5 <- reactive({
+    my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])
+    Profit <- aggregate(as.numeric(my_data1$TotalValue) ~ my_data1$Product + my_data1$Executive, my_data1, FUN=sum)
+    Profit[,3] <- round(Profit[,3], 2)
+    Sales <- my_data1[ which(my_data1$Cancellation=='N'),]
+    Summary <- aggregate(Sales$TotalValue~Sales$Product+ Sales$Executive, Sales, FUN = length)
+    #Summary
+    Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales$Product+ Sales$Executive, Sales, FUN = sum)
+    names(Summary)[1]<- "Product"
+    names(Summary)[2]<- "Executive"
+    names(Summary2)[1]<- "Product"
+    names(Summary2)[2]<- "Executive"
+    names(Profit)[1]<- "Product"
+    names(Profit)[2]<-"Executive"
+    Profit <- merge(Profit, Summary, by=c("Product","Executive"), all.x=T)
+    names(Profit)[4] <- "Sales"
+    Profit
+  })
+  
+  data7 <- reactive({
+    my_data1 <- subset(endorsements, endorsements$BTXDatecreated.x >= input$dateRange1[1] & endorsements$BTXDatecreated.x <= input$dateRange1[2])
+    my_data2 <- my_data1[1, ]
+    my_data2[1,] <- NA 
+    report <- rbind(my_data1, my_data2)
+    report[nrow(report),3] <- sum(report[1:(nrow(report)-1),3])
+    row.names(report) <- NULL
+    report <- sapply(report, as.character)
+    report[is.na(report)] <- " "
+    report
+    })
+  
   #Summary Table Sales Tab
   data6 <- reactive({
-    my_data1 <- my_data
-    my_data2 <- subset(my_data1, BTXPaydt != "")
-    my_data2 <- my_data1[ which(my_data1$BTXPaydt != "" | my_data1$BTXTrantype == "New Business"),]
+    my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
+    #my_data2 <- subset(my_data1, BTXPaydt != "")
+    my_data2 <- my_data1[ which(my_data1$BTXTrantype == "Renewal" | my_data1$BTXTrantype == "New Business"),]
     Totals <- data.frame(matrix(NA, nrow = 1, ncol = 6))
     colnames(Totals) <- c("New Business", "Renewals", "Pending Renewals", "New Business Cancellations", "New Business Cancellation Percentage", "Profit")
-    Totals[1,1] <- nrow(subset(my_data1, Cancellation == "N" & BTXTrantype == "New Business"))
+    Totals[1,1] <- nrow(subset(my_data2, Cancellation == "N" & BTXTrantype == "New Business"))
     Totals[1,2] <- nrow(subset(my_data2, Cancellation == "N" & BTXTrantype == "Renewal"))
     Totals[1,3] <- nrow(subset(my_data1, BTXTrantype == "Pending Renewal"))
-    Totals[1,4] <- nrow(subset(my_data1, Cancellation != "N" & BTXTrantype == "New Business"))
+    Totals[1,4] <- nrow(subset(my_data2, Cancellation != "N" & BTXTrantype == "New Business"))
     Totals[1,5] <- percent(as.numeric(Totals[1,4])/(as.numeric(Totals[1,1]) + as.numeric(Totals[1,4])))
     Totals[1,6] <- currency(sum(as.numeric(my_data2$TotalValue)))
     Totals
@@ -325,7 +391,7 @@ server <- shinyServer(function(input, output, session) {
       names(Summary2)[1]<-input$dataset3[1]
       names(Profit)[1]<-input$dataset3[1]
       Profit$Sales <- Summary[,2][match(Profit[,1], Summary[,1])]
-      Cancellations <- my_data2[ which(my_data2$Cancellation!="N"),]
+      Cancellations <- my_data2[ which(my_data2$Cancellation=="Y"),]
       if(nrow(Cancellations) >0){
         CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations[[input$dataset3[1]]]), FUN=length)
         names(CountCancellations)[2]<-"Count"
@@ -342,8 +408,8 @@ server <- shinyServer(function(input, output, session) {
         Profit[,5:8] <- round(Profit[,5:8]/Profit[,2]*100, 2)
       }
       Profit[,9] <- round((as.numeric(Profit[,3])/(as.numeric(Profit[,2])+as.numeric(Profit[,3])))*100, 2)
-      Profit$Y1Profit <- round((Profit[,4]+Profit[,5])*0.75, 2)
-      Profit$Y2Profit <- round((Profit[,4]+Profit[,5])*0.56, 2)
+      Profit$Y1Profit <- round((Profit[,4]+Profit[,5])*0.5, 2)
+      Profit$Y2Profit <- round((Profit[,4]+Profit[,5])*0.25, 2)
       names(Profit)[4:9]<-c(paste(input$dataset4, "of Profit", sep = " ") , paste(input$dataset4, "of Traffic Cost", sep = " "), paste(input$dataset4, " of Add-Ons", sep = " "), paste(input$dataset4, "of Finance", sep = " "), paste(input$dataset4, "of Discount", sep = " "), "Sales Cancellation Percentage")
       if(input$dataset4 == "Count" | input$dataset4 == "% Uptake" ){
         #Profit[,c("Y1Profit", "Y2Profit")] <- NULL
@@ -524,8 +590,6 @@ server <- shinyServer(function(input, output, session) {
     my_data9 <- data()
     my_data2 <- my_data9
     my_data9<- subset(my_data9,  BTXPaydt != "")
-    #if(input$filterName2 == 0){return()}
-    #if(is.null(input$filterName2)) return(NULL)
     Profit <- aggregate(as.numeric(my_data9$TotalValue), by=list(Category=my_data9$BTXDatecreated), FUN=sum)
     Sales <- my_data9[ which(my_data9$Cancellation=='N'),]
     CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales$BTXDatecreated), FUN=length)
@@ -542,7 +606,6 @@ server <- shinyServer(function(input, output, session) {
     Profit[is.na(Profit)] <- 0
     Profit[,5] <- as.numeric(Profit[,4])/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))*100
     Profit[,6] <- Profit[,2]/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))
-    #    Profit$CancellationPercentage <- as.numeric(Profit$Cancellations)/(as.numeric(Profit$Sales)+as.numeric(Profit$Cancellations))
     names(Profit)[1]<-"BTXDatecreated"
     names(Profit)[2]<-"Total Profit"
     names(Profit)[5]<-"Sales Cancellation Percentage"
@@ -564,10 +627,9 @@ server <- shinyServer(function(input, output, session) {
     CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales$Executive), FUN=length)
     names(CountSales)[2]<-"Count"
     Staff$Sales <- CountSales$Count[match(Staff$Category, CountSales$Category)]
-    Cancellations <- data3()[ which(data3()$Cancellation!='N'),]
+    Cancellations <- my_data10[ which(my_data10$Cancellation!='N'),]
     if(nrow(Cancellations) >0){
       CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations$Executive), FUN=length)
-      #names(CountSales)[2]<-"Count"
       names(CountCancellations)[2]<-"Count"
       Staff$Sales <- CountSales$Count[match(Staff$Category, CountSales$Category)]
       Staff$Cancellations <- CountCancellations$Count[match(Staff$Category, CountCancellations$Category)]
@@ -578,9 +640,7 @@ server <- shinyServer(function(input, output, session) {
     AddOnCount1 <- subset(Sales, Sales$AddOnCount != 0)
     if(nrow(AddOnCount1) >0){
       CountAddOns <- aggregate(as.numeric(AddOnCount1$AddOnCount), by=list(Category=AddOnCount1$Executive), FUN=sum)
-      #names(CountSales)[2]<-"Count"
       names(CountAddOns)[2]<-"Count"
-      #Staff$Sales <- CountSales$Count[match(Staff$Category, CountSales$Category)]
       Staff$AddOns <- CountAddOns$Count[match(Staff$Category, CountAddOns$Category)]
     } else{Staff$AddOns <- 0}
     #    Profit$CancellationPercentage <- as.numeric(Profit$Cancellations)/(as.numeric(Profit$Sales)+as.numeric(Profit$Cancellations))
@@ -706,6 +766,30 @@ server <- shinyServer(function(input, output, session) {
         layout(xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
                yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
     }})
+    
+    output$report <- downloadHandler(
+      # For PDF output, change this to "report.pdf"
+      filename = "report.html",
+      content = function(file) {
+        # Copy the report file to a temporary directory before processing it, in
+        # case we don't have write permissions to the current working dir (which
+        # can happen when deployed).
+        tempReport <- file.path(tempdir(), "report.Rmd")
+        file.copy("report.Rmd", tempReport, overwrite = TRUE)
+        
+        # Set up parameters to pass to Rmd document
+        if(user_details()$id %in% users){
+        params <- list(n = input$filterName, m = data4(), o = data5(), p = data7())
+        }
+        # Knit the document, passing in the `params` list, and eval it in a
+        # child of the global environment (this isolates the code in the document
+        # from the code in this app).
+        rmarkdown::render(tempReport, output_file = file,
+                          params = params,
+                          envir = new.env(parent = globalenv())
+        )
+      }
+    )
     
   output$user_name <- renderText({
     validate(
