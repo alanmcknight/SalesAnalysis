@@ -29,7 +29,7 @@ br(),
     ),
     htmlOutput("selectUI2"),
     dataTableOutput(outputId ="my_output_data6"),
-  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnValue", "Age", "Age.Range", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BTXExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "CancellationDate", "Day.of.Week", "Discount", "Doou.normally.pay.forour.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "Hour.Of.Day", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Licence.Years", "Month", "MonthStartDate", "PaymentMethod", "Price.Position.1", "Price.Position.2", "Price.Returned.Range", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "QAActivequotedate", "QAActivequotetime", "Quote.Date", "Quote.Reference", "Selected.Provider.Price", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "Week.of.Year",  "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
+  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnCount", "AddOnValue", "Age", "Age.Range", "AGREGATOR", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BTXExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "CancellationDate", "Day.of.Week", "Discount", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Has.the.vehicle.been.modified.in.any.way.e.g..alloy.wheels..tow.bar.etcâ..", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "Have.you.had.any.accidents.or.losses..whether.you.have.claimed.or.not.and.regardless.of.blame..in.the.last.5.years.", "Have.you.had.any.motoring.convictions..including.fixed.penalty.endorsements...or.anything.pending..in.the.last.5.years.", "Hour.Of.Day", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Is.the.vehicle.a.grey.or.parallel.import.", "Licence.Years", "Month", "MonthStartDate", "PaymentMethod", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Price.Position.1", "Price.Position.2", "Price.Returned.Range", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "QAActivequotedate", "QAActivequotetime", "Quote.Date", "Quote.Reference", "Selected.Provider.Price", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "Week.of.Year",  "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
                                     multiple = TRUE, options = list(maxItems = 3))), column(4, selectInput("plotFilter", "Select Performance Metric", choices = c("Total Profit", "Average Profit", "Cancellations", "Sales Cancellation Percentage", "Sales"), selected = "Sales"))),
   fluidRow(column(
     plotlyOutput("dailyPlot2"),
@@ -127,7 +127,6 @@ server <- shinyServer(function(input, output, session) {
     if(input$reportSelect[1] == "Sales Report"){
       my_data1 <- subset(my_data[, c(1:(which(colnames(my_data)=="Price.Position.1")), which(colnames(my_data)=="Price.Position.2"), which(colnames(my_data)=="Price.Position.3"), (ncol(my_data)-2):ncol(my_data))], my_data$BTXDatecreated >= input$dateRange1[1] & my_data$BTXDatecreated <= input$dateRange1[2])
       my_data1}else if(input$reportSelect[1] == "USwitch Report"){
-        #my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
         Data1 <- AdData
         USwitchData <- my_data[grep("APRUS", my_data$ECWebref),]
         SalesData<- subset(USwitchData, USwitchData$BTXDatecreated >= input$dateRange1[1] & USwitchData$BTXDatecreated <= input$dateRange1[2])
@@ -151,13 +150,17 @@ server <- shinyServer(function(input, output, session) {
         colnames(USwitchData1) <- c("recordtype", "salesmonth", "brand", "emailaddress", "postcode", "firstname", "surname", "dob", "carregistrationnumber", "policystartdate", "policyquotereference",	"providerquotereference",	"purchasechannel",	"premium",	"policypurchasedate",	"cancellationreason",	"cancellationeffectivedate",	"purchasetype",	"insurerunderwritingpolicy")
         
         USwitchData1 <- USwitchData1[!duplicated(USwitchData1), ]
+        #USwitchData1
+        
         USwitchData1$cancellationreason[USwitchData1$cancellationreason == "N"] <- ""
-        USwitchData1$cancellationeffectivedate[USwitchData1$cancellationeffectivedate == "N"] <- ""
+        USwitchData1$cancellationeffectivedate <- as.character(USwitchData1$cancellationeffectivedate)
+        USwitchData1$cancellationeffectivedate[USwitchData1$cancellationreason == ""] <- ""
+        #USwitchData1$cancellationeffectivedate[USwitchData1$cancellationreason == "N"] <- ""
         
         USwitchData1$purchasechannel[USwitchData1$purchasechannel == "O"] <- "Online"
         USwitchData1$purchasechannel[USwitchData1$purchasechannel != "Online"] <- "Telephone"
         USwitchData1$cancellationreason[USwitchData1$cancellationreason != ""] <- "NTU"
-        
+         
         USwitchData1$purchasetype[USwitchData1$purchasetype != "0"] <- "Monthly"
         USwitchData1$purchasetype[USwitchData1$purchasetype == "0"] <- "Annual"
         USwitchData1
@@ -165,8 +168,8 @@ server <- shinyServer(function(input, output, session) {
         #my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
         Data1 <- AdData
         CCData <- my_data[grep("APRCC", my_data$ECWebref),]
-        SalesData<- subset(CCData, CCData$BTXDatecreated >= input$dateRange1[1] & CCData$BTXDatecreated <= input$dateRange1[2])
-        CancellationData <- subset(CCData, CCData$Cancellation != "N")
+        SalesData<- subset(CCData, CCData$BTXDatecreated >= input$dateRange1[1] & CCData$BTXDatecreated <= input$dateRange1[2] & CCData$BTXTrantype == "New Business")
+        CancellationData <- subset(CCData, CCData$Cancellation != "N" & CCData$BTXTrantype == "New Business")
         CancellationData <- subset(CancellationData, as.Date(CancellationData$CancellationDate, "%Y-%m-%d") >= input$dateRange1[1] & as.Date(CancellationData$Cancellation, "%Y-%m-%d") <= input$dateRange1[2])
         CCData <- rbind(SalesData, CancellationData)
         CCData <- CCData [!duplicated(CCData ), ]
@@ -287,8 +290,13 @@ server <- shinyServer(function(input, output, session) {
       }else if(input$reportSelect[1] == "Pending Renewals"){
         report <- subset(my_data, (my_data$BTXTrantype == "Pending Renewal"))
         #reportCancellations <- subset(my_data, as.Date(my_data$Cancellation,  "%d/%m/%Y") == (Sys.Date()-1))
-        report <- report[order(report$BTXDatecreated, report$Cancellation, report$BTXTrantype),]
-        report <- report[c("BTXPolref", "BTXDatecreated", "Product", "Executive", "BTXTrantype", "TotalValue", "TrafficCost", "AddOnValue", "FinanceValue", "Discount", "Cancellation")]
+        report <- report[order(report$BTXDatecreated, report$TotalValue),]
+        report <- report[c("BTXPolref", "BTXDatecreated", "Product", "Executive", "TotalValue", "Discount")]
+        report$Value.Rating <- round((report$TotalValue + report$Discount)/ (sum(report$TotalValue) + sum(report$Discount))*100, 2)
+        report$Max.Discount <- report$TotalValue - report$Discount
+        colnames(report)[colnames(report) == 'Discount'] <- 'Previous.Discount'
+        report <- report[order(-report$Value.Rating),]
+        report <- report[c("Value.Rating", "BTXPolref", "BTXDatecreated", "Product", "Executive", "Previous.Discount", "Max.Discount")]
         report
       }
   })
@@ -345,7 +353,7 @@ server <- shinyServer(function(input, output, session) {
   
   #Summary Table Sales Tab
   data6 <- reactive({
-    my_data1 <- subset(my_data, my_data$BTXDatecreated >= input$dateRange[1] & my_data$BTXDatecreated <= input$dateRange[2])
+    my_data1 <- data()
     #my_data2 <- subset(my_data1, BTXPaydt != "")
     my_data2 <- my_data1[ which(my_data1$BTXTrantype == "Renewal" | my_data1$BTXTrantype == "New Business"),]
     Totals <- data.frame(matrix(NA, nrow = 1, ncol = 6))

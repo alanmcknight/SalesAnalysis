@@ -7,10 +7,13 @@ Data$UserID <- substr(Data$BTXPolref, 1, 6)
 Data$BFDPbalance[is.na(Data$BFDPbalance)] <- 0
 Data$BTXTrantype <- gsub('Transfrd NB', 'Renewal', Data$BTXTrantype)
 Data[Data$BTXPaydt == "" & Data$BTXTrantype == "Renewal", "BTXTrantype"] <- "Pending Renewal"
-Data$BTXDatecreated[Data$BTXTrantype == "Renewal"] <- as.character(Data$BTXPaydt[Data$BTXTrantype == "Renewal"])
+Data$BTXDatecreated[Data$BTXTrantype == "Renewal"] <- as.character(Data$BTXDtraised[Data$BTXTrantype == "Renewal"])
 Data$BTXDatecreated[Data$BTXTrantype == "Pending Renewal"] <- as.character(Data$BTXDtraised[Data$BTXTrantype == "Pending Renewal"])
 PolicySales <- subset(Data, (BTXTrantype == "New Business" | BTXTrantype == "Renewal" | BTXTrantype == "Pending Renewal") & (BTXPoltype %in% c("AG", "AR", "BD", "CA", "CC", "CL", "CP", "CR", "CV", "CW", "DO", "EB", "EL", "EN", "FL", "FP", "FS", "GT", "HH", "HL", "HO", "HQ", "HT",  "LI", "LP", "LV", "MA", "MC", "MT", "MV", "MY", "NH", "OC", "OS", "PB", "PC", "PD", "PI", "PK", "PL", "PO", "RP", "SB", "SC", "SH", "SL", "TH", "TL", "TM", "TR", "TV", "TW", "XX")))
 PolicySales[PolicySales$BTXPaydt == "" & PolicySales$BTXTrantype == "Renewal", "BTXTrantype"] <- "Pending Renewal"
+
+PaymentDates <- read.csv("PaymentDates.csv", stringsAsFactors =FALSE)
+PolicySales$BTXPaydt<-PaymentDates[match(PolicySales$BTXPolref, PaymentDates$BTXPolref),3]
 
 # PolicySales$BTXDatecreated[PolicySales$BTXTrantype == "Renewal"] <- as.character(PolicySales$BTXDtraised[PolicySales$BTXTrantype == "Renewal"])
 # PolicySales$BTXTrantype <- gsub('Transfrd NB', 'Renewal', PolicySales$BTXTrantype)
@@ -70,7 +73,7 @@ PolicySales <- merge(PolicySales, ProductRef, by.x="BTXPoltype", by.y="ProductCo
 PolicySales$TotalValue <- PolicySales$BTXCommamt + PolicySales$FinanceValue - PolicySales$TrafficCost
 
 #####Age Calculation
-Today <- as.Date("2016/11/01")
+Today <- as.Date("2017/04/01")
 PolicySales$Age = round(as.numeric((Today - as.Date(PolicySales$BCMDob, "%d/%m/%Y")) / 365.25), 0)
 PolicySales$Age[is.na(PolicySales$Age)] <- 0
 PolicySales$Age.Range = cut(PolicySales$Age, 
@@ -137,7 +140,8 @@ d <- read.csv("AllSalesReport-2016-11.csv", stringsAsFactors =FALSE)
 e <- read.csv("AllSalesReport-2016-12.csv", stringsAsFactors =FALSE)
 f <- read.csv("AllSalesReport-2017-01.csv", stringsAsFactors =FALSE)
 g <- read.csv("AllSalesReport-2017-02.csv", stringsAsFactors =FALSE)
-Sales <- rbind(a, b, c, d, e, f, g)
+h <- read.csv("AllSalesReport-2017-03.csv", stringsAsFactors =FALSE)
+Sales <- rbind(a, b, c, d, e, f, g, h)
 Sales <- subset(Sales, COMPANY == "Apricot Agg (OGI standalone)")
 Sales$POSTCODE <- toupper(Sales$POSTCODE)
 
@@ -151,7 +155,8 @@ Quotes <- read.csv("ExistingSalesQuotes.csv", stringsAsFactors =FALSE)
 #Quotes2 <- read.csv("Quotes01.csv", stringsAsFactors =FALSE)
 #Quotes3 <- read.csv("Quotes02.csv", stringsAsFactors =FALSE)
 Quotes4 <- read.csv("Quotes03.csv", stringsAsFactors =FALSE)
-Quotes <- rbind(Quotes, Quotes4)
+Quotes5 <- read.csv("Quotes04.csv", stringsAsFactors =FALSE)
+Quotes <- rbind(Quotes, Quotes4, Quotes5)
 #ExistingSalesQuotes <- Quotes[which(Quotes$Date.Of.Birth %in% DailySales$BCMDob & Quotes$Post.Code %in% DailySales$BCMPcode), ]
 #write.csv(ExistingSalesQuotes, "ExistingSalesQuotes.csv", row.names=FALSE)
 
@@ -291,7 +296,7 @@ Charges <- subset(x, BTXTrantype == "Charge")
 #Charges$BTXDatecreated <- as.Date(Charges$BTXDatecreated, "%d/%m/%Y")
 for( i in 1: nrow(Master)){
   Charges1 <- subset(Charges , Charges$BTXPolref == Master$BTXPolref[i] & Charges$BTXDtraised >= Master$BTXDtraised[i] & Charges$BTXDtraised < Master$Renewal[i])
-  Master$Discount[i] <- sum(Charges1$BTXOrigdebt)
+  Master$Discount[i] <- round(sum(Charges1$BTXOrigdebt), 2)
 }
 Master$Discount[is.na(Master$Discount)] <- 0
 
@@ -303,8 +308,9 @@ Master <- data.frame(Master[1:(bspot-1)], BTXOrigdebt.Range = cut(as.numeric(Mas
                                                                              breaks = c(-Inf, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1800, 2000, 2500, 3000,Inf), 
                                                                              labels = c("Less than £100", "£100-£200", "£200-£300", "£300-£400", "£400-£500", "£500-£600", "£600-£700", "£700-£800", "£800-£900", "£900-£1,000", "£1,000-£1,100", "£1,100-£1,200", "£1,200-£1,300", "£1,300-£1,400", "£1,400-15,00", "£1,500-£1,600", "£1,600-£1,800", "£1,800-£2,000", "£2,000-£2,500", "£2,500-£3,000", "£3,000+"), 
                                                                              right = FALSE), Master[(bspot):ncol(Master)])
-colnames(Master) <- gsub("[.]x", "", colnames(Master))
-colnames(Master) <- gsub("[.]y", "", colnames(Master))
+
+colnames(Master) <- sub('[.]x$', '', colnames(Master))
+colnames(Master) <- sub('[.]y$', '', colnames(Master))
 Master$Renewal <- NULL
 
 write.table(Master, "ApricotSalesMaster2.csv", row.names= FALSE, sep=",")
