@@ -80,12 +80,12 @@ server <- shinyServer(function(input, output, session) {
   users <- c("104921241849775714986", "101460119938975360500", "101914728899788440454", "102124089845388212018", "106112761530234792467", "109094592148669236498")
   
   my_data <- read.csv("ApricotSalesMaster2.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
-  my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
+  #my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
   my_data$CancellationDate <- as.Date( as.character(my_data$CancellationDate), "%Y-%m-%d")
   
   AdData <- read.csv("AdditionalReport.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   endorsements <- read.csv("Endorsements.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
-  endorsements$BTXDatecreated.x <- as.Date( as.character(endorsements$BTXDatecreated.x), "%d/%m/%Y")
+  #endorsements$BTXDatecreated.x <- as.Date( as.character(endorsements$BTXDatecreated.x), "%d/%m/%Y")
   
   filterList1 <- colnames(my_data)
   filterList2 <- c("All", sort(unique(my_data$Product)))
