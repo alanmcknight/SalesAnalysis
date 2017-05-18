@@ -1,60 +1,56 @@
 library(lubridate)
 library(plyr)
+
+##READ FILES
 setwd("//192.168.1.7/On-Site Home/alan.mcknight/Apricot/Daily Report Processing")
 Data <- read.csv("DailyStats3.csv", stringsAsFactors =FALSE)
 PaymentDates <- read.csv("PaymentDates.csv", stringsAsFactors =FALSE)
-
 setwd("//192.168.1.7/On-Site Home/alan.mcknight/Apricot/Daily Report Processing")
 PCLFinance <- read.csv("Commercial PCL Commission Tracker.csv", stringsAsFactors =FALSE)
-
 setwd("//192.168.1.7/On-Site Home/alan.mcknight/Apricot/Daily Report Processing")
 
-#Data$BTXDatecreated <- as.Date(Data$BTXDatecreated, "%d/%m/%Y")
-Data <- merge(Data,PaymentDates, by=c("BTXPolref","BTXTrantype", "BTXDatecreated", "BTXDtraised"),all.x=TRUE)
+##Update to original policy payment date.
+Data <- merge(Data,PaymentDates, by=c("BTXPolref","BTXTrantype", "BTXDatecreated", "BTXDtraised"),all.x=TRUE) 
 Data <- Data[!duplicated(Data), ]
-#Data$BTXDatecreated <- as.Date(Data$BTXDatecreated, "%d/%m/%Y")
-#Data <- transform(Data, min = pmin(as.Date(Data$BTXPaydt.x, "%d/%m/%Y"), as.Date(Data$BTXPaydt.y, "%d/%m/%Y"), na.rm = TRUE))
 Data <- transform(Data, min = pmin(as.Date(Data$BTXPaydt.x, "%d/%m/%Y"), as.Date(Data$BTXPaydt.y, "%Y-%m-%d"), na.rm = TRUE))
 Data$BTXPaydt.x <- Data$min
 colnames(Data)[colnames(Data) == 'BTXPaydt.x'] <- 'BTXPaydt'
-#colnames(Data)[colnames(Data) == 'BTXDatecreated.x'] <- 'BTXDatecreated'
-
 Data$BTXPaydt.y <- NULL
-#Data$BTXDatecreated.y <- NULL
 Data$min <- NULL
 
+##Update PaymentDates file, adding new policies with payments.
 PaymentDates <- Data[, c("BTXPolref", "BTXTrantype", "BTXDatecreated", "BTXDtraised", "BTXPaydt")]
 PaymentDates <- PaymentDates[!is.na(PaymentDates$BTXPaydt),]
 PaymentDates <- PaymentDates[!duplicated(PaymentDates), ]
 write.csv(PaymentDates, "PaymentDates.csv", row.names = F)
-
 Data$BTXDatecreated <- as.Date(Data$BTXDatecreated, "%d/%m/%Y")
 
-Data$UserID <- substr(Data$BTXPolref, 1, 6)
+Data$UserID <- substr(Data$BTXPolref, 1, 6) # Take UserID from policy reference
 Data$BFDPbalance[is.na(Data$BFDPbalance)] <- 0
-Data$BTXTrantype <- gsub('Transfrd NB', 'Renewal', Data$BTXTrantype)
-Data[is.na(Data$BTXPaydt) & Data$BTXTrantype == "Renewal", "BTXTrantype"] <- "Pending Renewal"
-Data$BTXDatecreated[Data$BTXTrantype == "Renewal"] <- as.character(Data$BTXPaydt[Data$BTXTrantype == "Renewal"])
-Data$BTXDatecreated[Data$BTXTrantype == "Pending Renewal"] <- as.Date(Data$BTXDtraised[Data$BTXTrantype == "Pending Renewal"], "%d/%m/%Y")
+Data$BTXTrantype <- gsub('Transfrd NB', 'Renewal', Data$BTXTrantype) # Set transferred new business as a renewal
+Data[is.na(Data$BTXPaydt) & Data$BTXTrantype == "Renewal", "BTXTrantype"] <- "Pending Renewal" # A renewal without payment is set as a pending renewal.
+Data$BTXDatecreated[Data$BTXTrantype == "Renewal"] <- as.character(Data$BTXPaydt[Data$BTXTrantype == "Renewal"]) # For renewals the date we look at is the date of the first payment.
+Data$BTXDatecreated[Data$BTXTrantype == "Pending Renewal"] <- as.Date(Data$BTXDtraised[Data$BTXTrantype == "Pending Renewal"], "%d/%m/%Y") # For pending renewals the date we look at is the date the poicy is raised.
+
+## Identify Policy Sales based on policy types we have defined.
 PolicySales <- subset(Data, (BTXTrantype == "New Business" | BTXTrantype == "Renewal" | BTXTrantype == "Pending Renewal") & (BTXPoltype %in% c("AG", "AR", "BD", "CA", "CC", "CL", "CP", "CR", "CV", "CW", "DO", "EB", "EL", "EN", "FL", "FP", "FS", "GT", "HH", "HL", "HO", "HQ", "HT",  "LI", "LP", "LV", "MA", "MC", "MT", "MV", "MY", "NH", "OC", "OS", "PB", "PC", "PD", "PI", "PK", "PL", "PO", "RP", "SB", "SC", "SH", "SL", "TH", "TL", "TM", "TR", "TV", "TW", "XX")))
 PolicySales[is.na(PolicySales$BTXPaydt) & PolicySales$BTXTrantype == "Renewal", "BTXTrantype"] <- "Pending Renewal"
 
+## x contains activity related to sales from the daily stats report.
 x <- rbind(Data, PolicySales)
 x <- x[! duplicated(x, fromLast=TRUE) & seq(nrow(x)) <= nrow(Data), ]
 x$BTXDtraised <- as.Date(x$BTXDtraised, "%d/%m/%Y")
-PolicySales$FinanceValue <- round(PolicySales$BFDPbalance * .096, 2)
 
+## Add policy finance, from daily stats and PCLFinance.
+PolicySales$FinanceValue <- round(PolicySales$BFDPbalance * .096, 2)
 PCLFinance$BTXPolref <- PCLFinance$Broker.Ref
 z <- lapply(intersect(PolicySales$BTXPolref, PCLFinance$BTXPolref),function(id) {
   d1 <- subset(PolicySales,BTXPolref==id)
   d2 <- subset(PCLFinance,BTXPolref==id)
-  
   d1$indices <- sapply(d1$BTXDatecreated,function(d) which.min(abs((as.Date(d2$Funded.Date, "%d/%m/%Y") - d))))
                        d2$indices <- 1:nrow(d2)
-                       
                        merge(d1,d2,by=c('BTXPolref','indices'))
 })
-  
   z2 <- do.call(rbind,z)
   z2$indices <- NULL
   z2 <- z2[c("BTXPolref", "BTXDatecreated", "Overrider", "Funded.Date")]
@@ -64,8 +60,6 @@ z <- lapply(intersect(PolicySales$BTXPolref, PCLFinance$BTXPolref),function(id) 
   PolicySales$FinanceValue <- PolicySales$FinanceValue +  PolicySales$Overrider
   PolicySales$Overrider <- NULL
   PolicySales$Funded.Date <- NULL
-  #PolicySales$FinanceValue2 <- z2$Overrider[ z2$BTXPolref %in% PolicySales$BTXPolref]
-
 
 ###### Traffic Costs and Sources PART 1
 PolicySales$TrafficCost <- 0
@@ -74,11 +68,6 @@ PolicySales$TrafficCost[grepl("APRQZ-", PolicySales$ECWebref, ignore.case=FALSE)
 PolicySales$TrafficCost[grepl("APRQZ-", PolicySales$ECWebref, ignore.case=FALSE) & PolicySales$BTXPoltype == "TW"] <- 46.50
 PolicySales$TrafficCost[grepl("APRQZ-", PolicySales$ECWebref, ignore.case=FALSE) & PolicySales$BTXPoltype == "HQ"] <- 42.50
 PolicySales$TrafficCost[grepl("APRQZ-", PolicySales$ECWebref, ignore.case=FALSE) & PolicySales$BTXPoltype == "HQ" & (PolicySales$HWBuildingssi == 0 | PolicySales$HWContentssi == 0) & PolicySales$BTXDatecreated > "2017-02-08"] <- 36.50
-
-### SINGLE COMBINED HOME ###
-#PolicySales$TrafficCost[grepl("APRQZ-", PolicySales$ECWebref, ignore.case=FALSE) & PolicySales$BTXPoltype == "HQ" &  ] <- 36.50
-### SINGLE COMBINED HOME ###
-
 PolicySales$TrafficCost[grepl("APRCC-", PolicySales$ECWebref, ignore.case=FALSE)] <- 50
 PolicySales$TrafficCost[grepl("APRUS-", PolicySales$ECWebref, ignore.case=FALSE)] <- 50
 PolicySales$Source[grepl("APRQZ-", PolicySales$ECWebref, ignore.case=FALSE)] <- "Quotezone"
@@ -86,7 +75,7 @@ PolicySales$Source[grepl("APRCC-", PolicySales$ECWebref, ignore.case=FALSE)] <- 
 PolicySales$Source[grepl("APRUS-", PolicySales$ECWebref, ignore.case=FALSE)] <- "Uswitch"
 PolicySales[PolicySales$BTXTrantype == "Renewal" | PolicySales$BTXTrantype == "Pending Renewal" , "TrafficCost"] <- 0
 
-##### Assign Executive
+##### Assign Executive & Payment Type
 code = c(1, 2, 3, 4, 5, 6, 7, 8, 9)
 Executive = c("Mark", "Audrey", "Aine", "Louise", "Megan", "Elaine", "Susan", "Stephen", "Admin User")
 execRef <- data.frame(code, Executive)
@@ -101,6 +90,7 @@ PolicySales$Executive[is.na(PolicySales$Executive)] <- "Not Assigned"
 PolicySales$PaymentMethod <- as.character(PolicySales$Payment)
 PolicySales$PaymentMethod[is.na(PolicySales$Payment)] <- "Not Assigned"
 
+##Create additional Policy Sales columns
 PolicySales$Cancellation <- "N"
 PolicySales$CancellationCommission <- 0
 PolicySales$CancellationDate <- "2100-01-01"
@@ -131,19 +121,20 @@ PolicySales$Hour.Of.Day <- substr(PolicySales$QAActivequotetime, 1, 2)
 #Day of Week Created Calculation
 PolicySales$Day.of.Week = weekdays(PolicySales$BTXDatecreated)
 
+#Day of Month Created Calculation
+PolicySales$Day.of.Month = strftime(PolicySales$BTXDatecreated, "%d")
+
 #Week of Year Created Calculation
 PolicySales$Week.of.Year = week(PolicySales$BTXDatecreated)
 
 #Month Created Calculation
-#PolicySales$Month1 = month((as.Date(PolicySales$BTXDatecreated, "%d/%m/%Y")))
 PolicySales$Month1 = strftime(PolicySales$BTXDatecreated, "%y.%m")
 PolicySales$Month2 = substr(months(PolicySales$BTXDatecreated), 1, 3)
 PolicySales$Month <- with(PolicySales, paste0(Month1, ". ", Month2))
 PolicySales$Month1 <- NULL
 PolicySales$Month2 <- NULL
 
-#Month Created Calculation
-#PolicySales$Month1 = month((as.Date(PolicySales$BTXDatecreated, "%d/%m/%Y")))
+#Month Start Date Calculation
 PolicySales$Month1 = strftime(as.Date(PolicySales$BTXDtraised, "%d/%m/%Y"), "%y.%m")
 PolicySales$Month2 = substr(months(as.Date(PolicySales$BTXDtraised, "%d/%m/%Y")), 1, 3)
 PolicySales$MonthStartDate <- with(PolicySales, paste0(Month1, ". ", Month2))
@@ -151,7 +142,6 @@ PolicySales$Month1 <- NULL
 PolicySales$Month2 <- NULL
 
 #Year Calculation
-#PolicySales$Year = (as.Date(PolicySales$BTXDatecreated, "%d/%m/%Y"))
 PolicySales$Year = as.numeric(format(PolicySales$BTXDatecreated,'%Y'))
 
 #Email Domain
@@ -172,10 +162,7 @@ PolicySales$BCMPcode <- toupper(PolicySales$BCMPcode)
 PolicySales$Longitude = Postcodes$longitude[ match(PolicySales$BCMPcode, Postcodes$postcode)]
 PolicySales$Latitude = Postcodes$latitude[ match(PolicySales$BCMPcode, Postcodes$postcode)]
 
-#write.csv(PolicySales, "DailyStatsProcessed.csv")
-
 ##### COMBINE SALES REPORT
-
 setwd("//192.168.1.7/On-Site Home/alan.mcknight/Monthly Sales")
 a <- read.csv("AllSalesReport-2016-08.csv", stringsAsFactors =FALSE)
 b <- read.csv("AllSalesReport-2016-09.csv", stringsAsFactors =FALSE)
@@ -185,14 +172,14 @@ e <- read.csv("AllSalesReport-2016-12.csv", stringsAsFactors =FALSE)
 f <- read.csv("AllSalesReport-2017-01.csv", stringsAsFactors =FALSE)
 g <- read.csv("AllSalesReport-2017-02.csv", stringsAsFactors =FALSE)
 h <- read.csv("AllSalesReport-2017-03.csv", stringsAsFactors =FALSE)
-Sales <- rbind(a, b, c, d, e, f, g, h)
+i <- read.csv("AllSalesReport-2017-04.csv", stringsAsFactors =FALSE)
+Sales <- rbind(a, b, c, d, e, f, g, h, i)
 Sales <- subset(Sales, COMPANY == "Apricot Agg (OGI standalone)")
 Sales$POSTCODE <- toupper(Sales$POSTCODE)
 
-DailySales <- merge(PolicySales, Sales, by.x=c("BCMDob", "BCMPcode"), by.y=c("BIRTH.DATE", "POSTCODE"), all.x=TRUE)
+DailySales <- merge(PolicySales, Sales, by.x=c("BCMDob", "BCMPcode"), by.y=c("BIRTH.DATE", "POSTCODE"), all.x=TRUE) ## TO BE UPDATED ONCE YEARLY OVERLAP OCCURS
 
 ##### COMBINE QUOTES REPORT
-
 setwd("//192.168.1.7/On-Site Home/alan.mcknight/Pricing Tool/Quote Reports")
 Quotes <- read.csv("ExistingSalesQuotes.csv", stringsAsFactors =FALSE)
 #Quotes1 <- read.csv("Quotes12.csv", stringsAsFactors =FALSE)
@@ -200,20 +187,20 @@ Quotes <- read.csv("ExistingSalesQuotes.csv", stringsAsFactors =FALSE)
 #Quotes3 <- read.csv("Quotes02.csv", stringsAsFactors =FALSE)
 Quotes4 <- read.csv("Quotes03.csv", stringsAsFactors =FALSE)
 Quotes5 <- read.csv("Quotes04.csv", stringsAsFactors =FALSE)
-Quotes <- rbind(Quotes, Quotes4, Quotes5)
+Quotes6 <- read.csv("Quotes05.csv", stringsAsFactors =FALSE)
+Quotes <- rbind(Quotes, Quotes4, Quotes5, Quotes6)
+##Lines below used to update and save processing time. 
 #ExistingSalesQuotes <- Quotes[which(Quotes$Date.Of.Birth %in% DailySales$BCMDob & Quotes$Post.Code %in% DailySales$BCMPcode), ]
 #write.csv(ExistingSalesQuotes, "ExistingSalesQuotes.csv", row.names=FALSE)
 
-#DailySales[DailySales$BTXPoltype == "PC",] <- merge(DailySales[DailySales$BTXPoltype == "PC",], Quotes, by.x=c("BCMDob", "BCMPcode"), by.y=c("Date.Of.Birth", "Post.Code"), all.x=TRUE)
 DailySales <- merge(DailySales, Quotes, by.x=c("BCMDob", "BCMPcode"), by.y=c("Date.Of.Birth", "Post.Code"), all.x=TRUE)
 DailySales[DailySales$BTXPoltype != "PC",][,which( colnames(DailySales)=="Quote.Reference" ):which( colnames(DailySales)=="Site.Name.110" )] <- NA
 DailySales <- DailySales[!is.na(DailySales$BTXPolref),]
+##Update daily sales for sales matching Quotezone quotes, previously unmatched.
 DailySales <- within(DailySales, Source[!is.na(Quote.Reference) & Source == 'None'] <- 'Quotezone')
 DailySales <- within(DailySales, TrafficCost[!is.na(Quote.Reference) & Source == 'None' & BTXTrantype == "New Business" & BTXPoltype == "PC"] <- 42.5)
 DailySales <- within(DailySales, TrafficCost[!is.na(Quote.Reference) & Source == 'None' & BTXTrantype == "New Business" & BTXPoltype == "HH"] <- 42.5)
 DailySales <- within(DailySales, TrafficCost[!is.na(Quote.Reference) & Source == 'None' & BTXTrantype == "New Business" & BTXPoltype == "TW"] <- 46.5)
-#setwd("//192.168.1.7/On-Site Home/alan.mcknight/Apricot/Daily Report Processing")
-#write.csv(DailySales, "DailySales.csv", row.names=F)
 
 bspot <- which(names(DailySales)=="Price.Position.1")
 
@@ -258,8 +245,6 @@ DailySales <- DailySales[order(DailySales$Apricot.Position),]
 DailySales <- ddply(DailySales, c("BTXPolref","BTXDatecreated"), head, 1)
 #DailySales <- unique(DailySales, by = c('BTXPolref','BTXDatecreated'))
 
-
-
 #Premium Range Calculation
 DailySales <- data.frame(DailySales[1:(bspot-1)], Price.Returned.Range = cut(as.numeric(DailySales$Selected.Provider.Price), 
                                                                              breaks = c(-Inf, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1800, 2000, 2500, 3000,Inf), 
@@ -289,7 +274,7 @@ Master$BTXDtraised1 <- NULL
 
 ##### ADD ADDITIONAL PRODUCTS
 ADDITIONALPRODUCTS <- subset(x, BTXTrantype != "Cancellation" & BTXTrantype !="Endorsement" & BTXTrantype !="Journal" & BTXTrantype !="Charge")
-ADDITIONALPRODUCTSCANCELLED <- subset(x, BTXTrantype == "Cancellation" & BTXTrantype !="Endorsement" & BTXTrantype !="Journal" & BTXTrantype !="Charge")
+ADDITIONALPRODUCTSCANCELLED <- subset(x, BTXTrantype == "Cancellation")
 #ADDITIONALPRODUCTS <- ADDITIONALPRODUCTS[(!((ADDITIONALPRODUCTS$BTXPolref %in% ADDITIONALPRODUCTSCANCELLED$BTXPolref) & (ADDITIONALPRODUCTS$BTXDtraised <= ADDITIONALPRODUCTSCANCELLED$BTXDtraised))),]
 ADDITIONALPRODUCTS <- merge(ADDITIONALPRODUCTS, ADDITIONALPRODUCTSCANCELLED, by.x=c('BTXPolref', 'BTXDtraised'), by.y=c('BTXPolref', 'BTXDtraised'), all.x = TRUE)
 ADDITIONALPRODUCTS <- ADDITIONALPRODUCTS[!grepl("Cancellation", ADDITIONALPRODUCTS$BTXTrantype.y),]
