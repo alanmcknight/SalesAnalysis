@@ -29,7 +29,7 @@ br(),
     ),
     htmlOutput("selectUI2"),
     dataTableOutput(outputId ="my_output_data6"),
-  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnCount", "AddOnValue", "Age", "Age.Range", "AGREGATOR", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BTXExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "CancellationDate", "Day.of.Week", "Discount", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Has.the.vehicle.been.modified.in.any.way.e.g..alloy.wheels..tow.bar.etcâ..", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "Have.you.had.any.accidents.or.losses..whether.you.have.claimed.or.not.and.regardless.of.blame..in.the.last.5.years.", "Have.you.had.any.motoring.convictions..including.fixed.penalty.endorsements...or.anything.pending..in.the.last.5.years.", "Hour.Of.Day", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Is.the.vehicle.a.grey.or.parallel.import.", "Licence.Years", "Month", "MonthStartDate", "PaymentMethod", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Price.Position.1", "Price.Position.2", "Price.Returned.Range", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "QAActivequotedate", "QAActivequotetime", "Quote.Date", "Quote.Reference", "Selected.Provider.Price", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "Week.of.Year",  "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
+  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnCount", "AddOnValue", "Age", "Age.Range", "AGREGATOR", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BTXExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "CancellationDate", "Day.of.Month", "Day.of.Week", "Discount", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Has.the.vehicle.been.modified.in.any.way.e.g..alloy.wheels..tow.bar.etcâ..", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "Have.you.had.any.accidents.or.losses..whether.you.have.claimed.or.not.and.regardless.of.blame..in.the.last.5.years.", "Have.you.had.any.motoring.convictions..including.fixed.penalty.endorsements...or.anything.pending..in.the.last.5.years.", "Hour.Of.Day", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Is.the.vehicle.a.grey.or.parallel.import.", "Licence.Years", "Month", "MonthStartDate", "PaymentMethod", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Price.Position.1", "Price.Position.2", "Price.Returned.Range", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "QAActivequotedate", "QAActivequotetime", "Quote.Date", "Quote.Reference", "Selected.Provider.Price", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "Week.of.Year",  "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
                                     multiple = TRUE, options = list(maxItems = 3))), column(4, selectInput("plotFilter", "Select Performance Metric", choices = c("Total Profit", "Average Profit", "Cancellations", "Sales Cancellation Percentage", "Sales"), selected = "Sales"))),
   fluidRow(column(
     plotlyOutput("dailyPlot2"),
@@ -50,7 +50,19 @@ tabPanel("Reports",
          selectInput("reportSelect", "Select Report", choices = c("ALPS LE Report", "Call Connections Report", "Daily Report", "MIS Report", "Sales Report", "USwitch Report", "Pending Renewals", "Quotezone Report", "XS Cover Report"), selected = "Daily Report"),
          downloadButton("reportDownload", "Download Report"),
          downloadButton("report", "Sales Report"),
-         br(),
+         uiOutput("newWindowContent", style = "display: none;"),
+         tags$script(HTML("
+      $(document).ready(function() {
+        if(window.location.hash != '') {
+          $('div:not(#newWindowContent)').hide();
+          $('#newWindowContent').show();
+          $('#newWindowContent').appendTo('body');
+        }
+      })
+    ")),
+         a(href = "http://secure.apricotinsurance.co.uk/app/broker/buyonline/report?media_type=text/htm", target = "_blank",
+           actionButton("Buy Online Report", "Buy Online Report")
+         ),
          br(),
          dataTableOutput(outputId ="my_output_data2")
 ), 
