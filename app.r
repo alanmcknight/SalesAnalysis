@@ -7,6 +7,7 @@ library(shinydashboard)
 library(leaflet)
 library(lubridate)
 library(stringr)
+#library(googlesheets)
 
 options(googleAuthR.scopes.selected = "https://www.googleapis.com/auth/plus.me")
 options("googleAuthR.webapp.client_id" = "769713801246-qk2qhqpqt1k0g8rurm0jkomg73kggj1i.apps.googleusercontent.com")
@@ -20,12 +21,17 @@ ui <- navbarPage(
   windowTitle = "Apricot Dashboard",
   tabPanel("Sales Analysis",
            #img(src='Apricot.png', align = "right"),
-  fluidRow(column(1, gar_auth_jsUI("auth_demo", login_text = "Log In")), column(2, p("Logged in as: ", textOutput("user_name")))), 
+  fluidRow(column(1, gar_auth_jsUI("auth_demo", login_text = "Log In")), column(2, p("Logged in as: ", textOutput("user_name")))
+           ),
 br(),
   mainPanel(
+    tags$style(type="text/css",
+               ".shiny-output-error { visibility: hidden; }",
+               ".shiny-output-error:before { visibility: hidden; }"
+    ),
     dateRangeInput('dateRange',
-                   label = 'Sale Date range: ',
-                   start = "2017-01-01", end = Sys.Date()
+                   label = 'Select Sale Date range',
+                   start = "2017-06-01", end = Sys.Date()
     ),
     htmlOutput("selectUI2"),
     dataTableOutput(outputId ="my_output_data6"),
@@ -61,8 +67,9 @@ tabPanel("Reports",
       })
     ")),
          a(href = "http://secure.apricotinsurance.co.uk/app/broker/buyonline/report?media_type=text/htm", target = "_blank",
-           actionButton("Buy Online Report", "Buy Online Report")
+           actionButton("Buy Online Sales Report", "Buy Online Sales Report")
          ),
+         br(),
          br(),
          dataTableOutput(outputId ="my_output_data2")
 ), 
@@ -91,12 +98,19 @@ server <- shinyServer(function(input, output, session) {
   
   users <- c("104921241849775714986", "101460119938975360500", "101914728899788440454", "102124089845388212018", "106112761530234792467", "109094592148669236498")
   
-  my_data <- read.csv("ApricotSalesMaster2.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
-  #my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%d/%m/%Y")
+  #my_data <- reactive({ if(user_details()$id %in% users){
+  #   my_data <- read.csv("https://www.dropbox.com/s/t949ydw2al7esy5/ApricotSalesMasked.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  # }
+  #   shiny::runApp( launch.browser=T, port=1221)
+  # })
+    
+  my_data <- read.csv("https://www.dropbox.com/s/t949ydw2al7esy5/ApricotSalesMasked.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%Y-%m-%d")
   my_data$CancellationDate <- as.Date( as.character(my_data$CancellationDate), "%Y-%m-%d")
   
-  AdData <- read.csv("AdditionalReport.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
-  endorsements <- read.csv("Endorsements.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  AdData <- read.csv("stats.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  endorsements <- read.csv("https://www.dropbox.com/s/siqmo27yg0dbpc6/Endorsements.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+#  endorsements <- read.csv("Endorsements.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   #endorsements$BTXDatecreated.x <- as.Date( as.character(endorsements$BTXDatecreated.x), "%d/%m/%Y")
   
   filterList1 <- colnames(my_data)
@@ -366,7 +380,7 @@ server <- shinyServer(function(input, output, session) {
   #Summary Table Sales Tab
   data6 <- reactive({
     my_data1 <- data()
-    #my_data2 <- subset(my_data1, BTXPaydt != "")
+    my_data2 <- subset(my_data1, BTXPaydt != "")
     my_data2 <- my_data1[ which(my_data1$BTXTrantype == "Renewal" | my_data1$BTXTrantype == "New Business"),]
     Totals <- data.frame(matrix(NA, nrow = 1, ncol = 6))
     colnames(Totals) <- c("New Business", "Renewals", "Pending Renewals", "New Business Cancellations", "New Business Cancellation Percentage", "Profit")

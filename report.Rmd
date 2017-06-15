@@ -1,0 +1,25 @@
+---
+title: "Apricot Daily Report"
+output: html_document
+params:
+  n: NA
+  m: NA
+  o: NA
+  p: NA
+---
+
+```{r Code Chunk, fig.width = 10, fig.height = 8, echo = FALSE, message = FALSE, warning=FALSE}
+df <- params$o
+
+plot_ly(df, x = df$Product, y = df$Sales, color = df$Executive) %>%
+layout(title = "Sales Generated")
+```
+
+```{r echo = FALSE, message = FALSE, warning=FALSE}
+library(knitr)
+#kable(params$o, caption = "For Graph")
+kable(params$m, caption = "Sales and Cancellations (including Pending Renewals)")
+kable(params$p, caption = "Endorsements")
+```
+
+
