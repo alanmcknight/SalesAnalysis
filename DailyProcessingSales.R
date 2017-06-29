@@ -1,5 +1,7 @@
 library(lubridate)
 library(plyr)
+library(fuzzyjoin)
+library(dplyr)
 
 ##READ FILES
 setwd("//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS/DAILY STATS")
@@ -12,14 +14,15 @@ setwd("//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS")
 
 # Copy Additional Report
 current.folder <- "//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS/ADDITIONAL REPORT - MIS, ALPS"
-new.folder <- setwd("//192.168.1.7/On-Site Home/alan.mcknight/Pricing Tool/SalesAnalysis")
-
-# find the files that you want
+new.folder <- setwd("C:/Users/alan.mcknight/Dropbox")
 list.of.files <- list.files(current.folder, "stats.csv$", full.names = TRUE)
-
-# copy the files to the new folder
 file.copy(list.of.files, new.folder, overwrite = T)
 
+# Copy Quote Source Reports
+current.folder <- "//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS/QUOTE SOURCES"
+new.folder <- setwd("C:/Users/alan.mcknight/Dropbox")
+list.of.files <- list.files(current.folder, "apricot-ogi-car.csv$", full.names = TRUE)
+file.copy(list.of.files, new.folder, overwrite = T)
 
 ##Update to original policy payment date.
 Data <- merge(Data,PaymentDates, by=c("BTXPolref","BTXTrantype", "BTXDatecreated", "BTXDtraised"),all.x=TRUE) 
@@ -34,6 +37,7 @@ Data$min <- NULL
 PaymentDates <- Data[, c("BTXPolref", "BTXTrantype", "BTXDatecreated", "BTXDtraised", "BTXPaydt")]
 PaymentDates <- PaymentDates[!is.na(PaymentDates$BTXPaydt),]
 PaymentDates <- PaymentDates[!duplicated(PaymentDates), ]
+setwd("//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS")
 write.csv(PaymentDates, "PaymentDates.csv", row.names = F)
 Data$BTXDatecreated <- as.Date(Data$BTXDatecreated, "%d/%m/%Y")
 
@@ -120,7 +124,7 @@ PolicySales <- merge(PolicySales, ProductRef, by.x="BTXPoltype", by.y="ProductCo
 PolicySales$TotalValue <- PolicySales$BTXCommamt + PolicySales$FinanceValue - PolicySales$TrafficCost
 
 #####Age Calculation
-Today <- as.Date("2017/04/01")
+Today <- Sys.Date()
 PolicySales$Age = round(as.numeric((Today - as.Date(PolicySales$BCMDob, "%d/%m/%Y")) / 365.25), 0)
 PolicySales$Age[is.na(PolicySales$Age)] <- 0
 PolicySales$Age.Range = cut(PolicySales$Age, 
@@ -132,30 +136,30 @@ PolicySales$Age.Range = cut(PolicySales$Age,
 PolicySales$Hour.Of.Day <- substr(PolicySales$QAActivequotetime, 1, 2)
 
 #Day of Week Created Calculation
-PolicySales$Day.of.Week = weekdays(PolicySales$BTXDatecreated)
+PolicySales$Day.of.Week.Created = weekdays(PolicySales$BTXDatecreated)
 
 #Day of Month Created Calculation
 PolicySales$Day.of.Month = strftime(PolicySales$BTXDatecreated, "%d")
 
 #Week of Year Created Calculation
-PolicySales$Week.of.Year = week(PolicySales$BTXDatecreated)
+PolicySales$Week.of.Year.Created = week(PolicySales$BTXDatecreated)
 
 #Month Created Calculation
 PolicySales$Month1 = strftime(PolicySales$BTXDatecreated, "%y.%m")
 PolicySales$Month2 = substr(months(PolicySales$BTXDatecreated), 1, 3)
-PolicySales$Month <- with(PolicySales, paste0(Month1, ". ", Month2))
+PolicySales$Month.Created <- with(PolicySales, paste0(Month1, ". ", Month2))
 PolicySales$Month1 <- NULL
 PolicySales$Month2 <- NULL
 
 #Month Start Date Calculation
 PolicySales$Month1 = strftime(as.Date(PolicySales$BTXDtraised, "%d/%m/%Y"), "%y.%m")
 PolicySales$Month2 = substr(months(as.Date(PolicySales$BTXDtraised, "%d/%m/%Y")), 1, 3)
-PolicySales$MonthStartDate <- with(PolicySales, paste0(Month1, ". ", Month2))
+PolicySales$Month.Start.Date <- with(PolicySales, paste0(Month1, ". ", Month2))
 PolicySales$Month1 <- NULL
 PolicySales$Month2 <- NULL
 
 #Year Calculation
-PolicySales$Year = as.numeric(format(PolicySales$BTXDatecreated,'%Y'))
+PolicySales$Year.Created = as.numeric(format(PolicySales$BTXDatecreated,'%Y'))
 
 #Email Domain
 PolicySales$Email.Domain = sub("^[^@]*", "", PolicySales$BCMEmail)
@@ -194,7 +198,25 @@ Sales <- read.csv("ExistingApricotSales.csv", stringsAsFactors = F)
 #write.csv(Sales, "ExistingApricotSales.csv", row.names=FALSE)
 Sales$POSTCODE <- toupper(Sales$POSTCODE)
 
-DailySales <- merge(PolicySales, Sales, by.x=c("BCMDob", "BCMPcode"), by.y=c("BIRTH.DATE", "POSTCODE"), all.x=TRUE) ## TO BE UPDATED ONCE YEARLY OVERLAP OCCURS
+Sales$Match <- paste(Sales$BIRTH.DATE, Sales$POSTCODE, Sales$EMAIL.ADDRESS)
+PolicySales$Match <- paste(PolicySales$BCMDob, PolicySales$BCMPcode, PolicySales$BCMEmail)
+
+joined <- PolicySales %>%
+  stringdist_left_join(Sales, by = c(Match = "Match"), max_dist = 5,
+                        distance_col = "distance")
+
+joined$DateDifference <- joined$BTXDatecreated - as.Date(joined$QUOTE.DATE, "%d/%m/%Y")
+joined$DateDifference <- as.numeric(joined$DateDifference)
+joined$DateDifference[joined$DateDifference < 0] <- 365
+joined <- joined[order(joined$DateDifference),] 
+joined <- joined[!duplicated(joined[c("BTXPolref","BTXDatecreated", "BTXOrigdebt", "BTXPaydt")]),]
+joined$Match.x <- NULL
+joined$Match.y <- NULL
+joined$distance <- NULL
+joined$DateDifference <- NULL
+
+#DailySales <- merge(PolicySales, Sales, by.x=c("BCMDob", "BCMPcode"), by.y=c("BIRTH.DATE", "POSTCODE"), all.x=TRUE) ## TO BE UPDATED ONCE YEARLY OVERLAP OCCURS
+DailySales <- joined
 
 ##### COMBINE QUOTES REPORT
 setwd("//192.168.1.7/On-Site Home/alan.mcknight/Pricing Tool/Quote Reports")
@@ -207,6 +229,12 @@ Quotes <- read.csv("ExistingSalesQuotes.csv", stringsAsFactors =FALSE)
 Quotes6 <- read.csv("Quotes05.csv", stringsAsFactors =FALSE)
 Quotes7 <- read.csv("Quotes06.csv", stringsAsFactors =FALSE)
 Quotes <- rbind(Quotes, Quotes6, Quotes7)
+
+a <- as.Date(Quotes$Quote.Date,format="%d/%m/%Y") # Produces NA when format is not "%m/%d/%Y"
+b <- as.Date(Quotes$Quote.Date,format="%Y-%m-%d") # Produces NA when format is not "%d.%m.%Y"
+a[is.na(a)] <- b[!is.na(b)] # Combine both while keeping their ranks
+Quotes$Quote.Date <- a # Put it back in your dataframe
+
 ##Lines below used to update and save processing time. 
 #ExistingSalesQuotes <- Quotes[which(Quotes$Date.Of.Birth %in% DailySales$BCMDob & Quotes$Post.Code %in% DailySales$BCMPcode), ]
 #write.csv(ExistingSalesQuotes, "ExistingSalesQuotes.csv", row.names=FALSE)
@@ -364,7 +392,6 @@ write.table(Master, "ApricotSales.csv", row.names= FALSE, sep=",")
 setwd("C:/Users/alan.mcknight/Dropbox")
 write.table(Master, "ApricotSales1.csv", row.names= FALSE, sep=",")
 
-
 anonymiseColumns <- function(df, colIDs) {
   id <- if(is.character(colIDs)) match(colIDs, names(df)) else colIDs
   for(id in colIDs) {
@@ -375,7 +402,7 @@ anonymiseColumns <- function(df, colIDs) {
   #names(df)[id] <- paste("V", id, sep="")
   df
 }
-df2 <- anonymiseColumns(Master, c("BPYExec", "BTXInsurer","Insurer", "SOURCE.TYPE", "SOURCE.USER.NAME", "Insurer.1", "Site.Name.1", "Insurer.2", "Site.Name.2", "Insurer.3", "Site.Name.3", "Insurer.4", "Site.Name.4", "Insurer.5", "Site.Name.5", "Insurer"))
+df2 <- anonymiseColumns(Master, c("Executive", "BTXInsurer","Insurer", "SOURCE.TYPE", "SOURCE.USER.NAME", "Insurer.1", "Site.Name.1", "Insurer.2", "Site.Name.2", "Insurer.3", "Site.Name.3", "Insurer.4", "Site.Name.4", "Insurer.5", "Site.Name.5", "Insurer"))
 
 write.table(df2, "ApricotSalesMasked.csv", row.names= FALSE, sep=",")
 
@@ -404,5 +431,3 @@ Endorsements$Total <- Endorsements$BTXCommamt.x + Endorsements$BTXOrigdebt
 Endorsements = aggregate(Total~BTXPolref+BTXDatecreated.x, data=Endorsements, sum, na.rm=TRUE)
 
 write.table(Endorsements, "Endorsements.csv", row.names= FALSE, sep=",")
-
-#### CancellationValues
