@@ -8,6 +8,7 @@ library(leaflet)
 library(lubridate)
 library(stringr)
 library(rdrop2)
+library(chron)
 #library(googlesheets)
 
 options(googleAuthR.scopes.selected = "https://www.googleapis.com/auth/plus.me")
@@ -36,7 +37,7 @@ br(),
     ),
     htmlOutput("selectUI2"),
     dataTableOutput(outputId ="my_output_data6"),
-  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnCount", "AddOnValue", "Age", "Age.Range", "AGREGATOR", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BPYExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "CancellationDate", "Day.of.Month", "Day.of.Week", "Discount", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Has.the.vehicle.been.modified.in.any.way.e.g..alloy.wheels..tow.bar.etcâ..", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "Have.you.had.any.accidents.or.losses..whether.you.have.claimed.or.not.and.regardless.of.blame..in.the.last.5.years.", "Have.you.had.any.motoring.convictions..including.fixed.penalty.endorsements...or.anything.pending..in.the.last.5.years.", "Hour.Of.Day", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Is.the.vehicle.a.grey.or.parallel.import.", "Licence.Years", "Month", "MonthStartDate", "PaymentMethod", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Price.Position.1", "Price.Position.2", "Price.Returned.Range", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "QAActivequotedate", "QAActivequotetime", "Quote.Date", "Quote.Reference", "Selected.Provider.Price", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "Week.of.Year",  "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year"),
+  fluidRow(column(4, selectizeInput("dataset3", "Select data breakdown criteria", choices = c("AddOnCount", "AddOnValue", "Age", "Age.Range", "AGREGATOR", "Apricot.Position", "BPYNotes2", "BTXCommamt", "BTXDatecreated", "BTXDtraised", "BPYExec","BTXInsurer", "BTXOrigdebt.Range", "BTXOrigdebt", "BTXPolref", "BTXPoltype", "BTXTrantype", "Cancellation", "CancellationDate", "Day.of.Month", "Day.of.Week.Created", "Discount", "Do.you.normally.pay.for.your.insurance.monthly.", "Drivers.to.be.insured.", "ECWebref", "Email.Domain", "Employment.Status", "Executive", "FinanceValue", "Has.the.vehicle.been.modified.in.any.way.e.g..alloy.wheels..tow.bar.etcâ..", "Have.you.been.regularly.driving.a.car.not.insured.by.you.", "Have.you.had.any.accidents.or.losses..whether.you.have.claimed.or.not.and.regardless.of.blame..in.the.last.5.years.", "Have.you.had.any.motoring.convictions..including.fixed.penalty.endorsements...or.anything.pending..in.the.last.5.years.", "Hour.Of.Day", "How.many.years.claim.free.driving.do.you.have.on.the.car.not.insured.by.you.", "How.many.years.no.claims.bonus..NCB..do.you.have.",  "Is.the.vehicle.a.grey.or.parallel.import.", "Licence.Years", "Month.Created", "Month.Start.Date", "PaymentMethod", "Postcode.Area", "Post.Code.District", "Post.Code.Prefix", "Postcode.Region", "Price.Position.1", "Price.Position.2", "Price.Returned.Range", "Product", "Proposer.Claims.Count", "Proposer.Convictions.Count", "QAActivequotedate", "QAActivequotetime", "Quote.Date", "Quote.Reference", "Selected.Provider.Price", "Source","SOURCE.TYPE.y", "TrafficCost", "Type.of.driving.licence", "Vehicle.Value.Range", "Vehicle.Year.of.Manufacture", "Voluntary.excess.", "Week.of.Year.Created",  "What.is.the.estimated.value.of.the.vehicle.", "What.type.of.cover.would.you.like.", "Year.Created"),
                                     multiple = TRUE, options = list(maxItems = 3))), column(4, selectInput("plotFilter", "Select Performance Metric", choices = c("Total Profit", "Average Profit", "Cancellations", "Sales Cancellation Percentage", "Sales"), selected = "Sales"))),
   fluidRow(column(
     plotlyOutput("dailyPlot2"),
@@ -54,7 +55,7 @@ tabPanel("Reports",
          dateRangeInput('dateRange1',
                         label = 'Sale Date range: ',
                         start = Sys.Date()-1, end = Sys.Date()-1),
-         selectInput("reportSelect", "Select Report", choices = c("ALPS LE Report", "Call Connections Report", "Daily Report", "MIS Report", "Pending Renewals", "Quotezone Report", "Quotezone Quote-Sale Report", "Sales Report", "USwitch Report", "XS Cover Report"), selected = "Daily Report"),
+         selectInput("reportSelect", "Select Report", choices = c("ALPS LE Report", "Call Connections Report", "Daily Report", "MIS Report", "Pending Renewals", "Phone - Inbound", "Quotezone Report", "Quotezone Quote-Sale Report", "Sales Report", "USwitch Report", "XS Cover Report"), selected = "Daily Report"),
          downloadButton("reportDownload", "Download Report"),
          downloadButton("report", "Sales Report"),
          uiOutput("newWindowContent", style = "display: none;"),
@@ -78,6 +79,11 @@ tabPanel("Executive Performance",
          dateRangeInput('dateRange2',
                         label = 'Sale Date range: ',
                         start = Sys.Date()-7, end = Sys.Date()-1), 
+         fluidRow(column(2, checkboxGroupInput('show_vars1', 'Payment',
+                            c("Journal", "Bank-Other", "Not Assigned", "Buy Online", "Visa", "Mastercard", "Money/Cash", "Cheque", "Paid Direct", "Bank Credit"), selected = "Buy Online")),
+                  column(2, checkboxGroupInput('show_vars', 'Sale Types',
+                                               c("New Business", "Renewal"), selected = "New Business"))
+         ),
          htmlOutput("selectUI3"),
          selectInput("plotFilter2", "Select Performance Metric", choices = c("Add-Ons", "Cancellations", "Sales", "Total Profit"), selected = "Sales"),
          plotlyOutput("dailyPlot10"),
@@ -97,7 +103,7 @@ server <- shinyServer(function(input, output, session) {
     with_shiny(get_user_info, shiny_access_token = access_token())
   })
   
-  users <- c("104921241849775714986", "101460119938975360500", "101914728899788440454", "102124089845388212018", "106112761530234792467", "109094592148669236498", "115715313375704491860")
+  users <- c("104921241849775714986", "101460119938975360500", "101914728899788440454", "102124089845388212018", "106112761530234792467", "109094592148669236498", "115715313375704491860", "108606224629063662049")
   
   #my_data <- reactive({ if(user_details()$id %in% users){
   #   my_data <- read.csv("https://www.dropbox.com/s/t949ydw2al7esy5/ApricotSalesMasked.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
@@ -110,9 +116,10 @@ server <- shinyServer(function(input, output, session) {
   
   data_Masked <- reactive({
   if(user_details()$id == "115715313375704491860"){
-    my_data <- read.csv("https://www.dropbox.com/s/t949ydw2al7esy5/ApricotSalesMasked.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+    my_data <- drop_read_csv("ApricotSalesMasked.csv" , header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   }else{
-    my_data <- read.csv("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+    my_data <- drop_read_csv("ApricotSales1.csv" , header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+    #my_data <- read.csv("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   }
     my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%Y-%m-%d")
     my_data$CancellationDate <- as.Date( as.character(my_data$CancellationDate), "%Y-%m-%d")
@@ -122,13 +129,20 @@ server <- shinyServer(function(input, output, session) {
   # my_data$BTXDatecreated <- as.Date( as.character(my_data$BTXDatecreated), "%Y-%m-%d")
   # my_data$CancellationDate <- as.Date( as.character(my_data$CancellationDate), "%Y-%m-%d")
   
-  AdData <- read.csv("https://www.dropbox.com/s/2ndhok3f65iww6o/stats.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  AdData <- drop_read_csv("stats.csv", stringsAsFactors =FALSE)
+  #AdData <- read.csv("https://www.dropbox.com/s/2ndhok3f65iww6o/stats.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   #endorsements <- read.csv("Endorsements.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
-  endorsements <- read.csv("https://www.dropbox.com/s/siqmo27yg0dbpc6/Endorsements.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
-  seopaPerformance <- read.csv("https://www.dropbox.com/s/8dx150rdqhav15m/apricot-ogi-car.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  endorsements <- drop_read_csv("Endorsements.csv", stringsAsFactors =FALSE)
+  #endorsements <- read.csv("https://www.dropbox.com/s/siqmo27yg0dbpc6/Endorsements.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  seopaPerformance <- drop_read_csv("apricot-ogi-car.csv", stringsAsFactors =FALSE)
+  #seopaPerformance <- read.csv("https://www.dropbox.com/s/8dx150rdqhav15m/apricot-ogi-car.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   seopaPerformance$Date <- as.Date( as.character(seopaPerformance$Date), "%d-%b")
   #  endorsements <- read.csv("Endorsements.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   #endorsements$BTXDatecreated.x <- as.Date( as.character(endorsements$BTXDatecreated.x), "%d/%m/%Y")
+  phoneStats <- drop_read_csv("phoneStats.csv", stringsAsFactors =FALSE)
+  phoneStats$date <- as.Date( as.character(phoneStats$date), "%d/%m/%Y")
+  renewalRatio <- drop_read_csv("renewalRatios.csv", stringsAsFactors =FALSE)
+  staffAbsence<- drop_read_csv("ApricotHolidayRequests.csv" , header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   
   filterList1 <- reactive({
         filterList1 <- colnames(data_Masked())
@@ -184,6 +198,7 @@ server <- shinyServer(function(input, output, session) {
         Data1 <- AdData
         my_data <- data_Masked()
         USwitchData <- my_data[grep("APRUS", my_data$ECWebref),]
+        USwitchData <- USwitchData[USwitchData$BTXTrantype == "New Business",]
         SalesData<- subset(USwitchData, USwitchData$BTXDatecreated >= input$dateRange1[1] & USwitchData$BTXDatecreated <= input$dateRange1[2])
         CancellationData <- subset(USwitchData, USwitchData$Cancellation != "N")
         CancellationData <- subset(CancellationData, as.Date(CancellationData$CancellationDate, "%Y-%m-%d") >= input$dateRange1[1] & as.Date(CancellationData$CancellationDate, "%Y-%m-%d") <= input$dateRange1[2])
@@ -197,25 +212,23 @@ server <- shinyServer(function(input, output, session) {
         
         USwitchData1 <- merge(USwitchData, Data1, by = "BTXPolref", all.x=TRUE)
         
-        USwitchData1 <- USwitchData1[c("recordtype", "salesmonth", "brand", "BCMEmail.x", "BCMPcode.x", "BCMName", "surname", "BCMDob.x", "CFReg", "BTXDtraised.x", "ECWebref.x", "BTXPolref", "BTXPaymethod.x", "BTXOrigdebt.x", "BTXDatecreated.x", "Cancellation", "CancellationDate", "FinanceValue", "BTXInsurer.x")]
-        
+        USwitchData1 <- USwitchData1[c("recordtype", "salesmonth", "brand", "BCMEmail.x", "BCMPcode.x", "BCMName", "surname", "BCMDob.x", "CFReg", "BTXDtraised.x", "ECWebref.x", "BTXPolref", "BPYNotes2.x", "BTXOrigdebt.x", "BTXDatecreated.x", "Cancellation", "CancellationDate", "FinanceValue", "BTXInsurer.x")]
+        USwitchData1$BTXDatecreated.x <- pmin(as.Date(USwitchData1$BTXDtraised.x, "%Y-%m-%d"), as.Date(USwitchData1$BTXDatecreated.x,"%Y-%m-%d"))
         USwitchData1$surname <- word(USwitchData1$BCMName, -1)
         USwitchData1$BCMName <- word(USwitchData1$BCMName, -2)
-        
+
         colnames(USwitchData1) <- c("recordtype", "salesmonth", "brand", "emailaddress", "postcode", "firstname", "surname", "dob", "carregistrationnumber", "policystartdate", "policyquotereference",	"providerquotereference",	"purchasechannel",	"premium",	"policypurchasedate",	"cancellationreason",	"cancellationeffectivedate",	"purchasetype",	"insurerunderwritingpolicy")
-        
         USwitchData1 <- USwitchData1[!duplicated(USwitchData1), ]
-        #USwitchData1
-        
+
         USwitchData1$cancellationreason[USwitchData1$cancellationreason == "N"] <- ""
         USwitchData1$cancellationeffectivedate <- as.character(USwitchData1$cancellationeffectivedate)
         USwitchData1$cancellationeffectivedate[USwitchData1$cancellationreason == ""] <- ""
         #USwitchData1$cancellationeffectivedate[USwitchData1$cancellationreason == "N"] <- ""
-        
-        USwitchData1$purchasechannel[USwitchData1$purchasechannel == "O"] <- "Online"
+
+        USwitchData1$purchasechannel <- sub(".*BUYO.*", "Online", USwitchData1$purchasechannel)
         USwitchData1$purchasechannel[USwitchData1$purchasechannel != "Online"] <- "Telephone"
         USwitchData1$cancellationreason[USwitchData1$cancellationreason != ""] <- "NTU"
-         
+
         USwitchData1$purchasetype[USwitchData1$purchasetype != "0"] <- "Monthly"
         USwitchData1$purchasetype[USwitchData1$purchasetype == "0"] <- "Annual"
         USwitchData1
@@ -380,6 +393,24 @@ server <- shinyServer(function(input, output, session) {
         names(QuoteSummary)[4] <- "Quotes"
         QuoteSummary <- QuoteSummary[,c("Date", "Day", "Total.Quotes","Quotes.x", "Error", "Filtered", "X1st.Best", "Total.Clicks", "Sales")]
         QuoteSummary
+      }else if(input$reportSelect[1] == "Phone - Inbound"){
+        myData <- phoneStats
+        myData <- aggregate(list(as.numeric(myData$num..calls.handled), as.numeric(myData$num..calls.unanswered), chron(times = myData$total.talk.time)), by = list(myData$date), FUN=sum)
+        colnames(myData) <- c("Date", "Calls.Handled", "Called Missed", "Total.Talk.Time")
+        myData <- subset(myData, (myData$Date >= input$dateRange1[1] & myData$Date <= input$dateRange1[2]))
+        myData$Average.Call.Time <- myData$Total.Talk.Time / myData$Calls.Handled
+        myData <- myData[order(myData$Date),]
+        myData$DayofWeek <- weekdays(as.Date(myData$Date))
+        myData$StaffAvailable <- nrow(staffAbsence[!duplicated(staffAbsence[,c('First.name','Last.name')]),])
+        myData$StaffAvailable <- myData$StaffAvailable - 0.5
+        myData$StaffAvailable[myData$DayofWeek=="Monday"]<- myData$StaffAvailable[myData$DayofWeek=="Monday"] - 1
+        myData$StaffAvailable[myData$DayofWeek=="Friday"]<- myData$StaffAvailable[myData$DayofWeek=="Friday"] - .5
+        for(i in 1:nrow(staffAbsence)){
+          myData$StaffAvailable[myData$Date>=as.Date(staffAbsence$From[i], "%d/%m/%Y") & myData$Date<=as.Date(staffAbsence$To[i], "%d/%m/%Y")]<- myData$StaffAvailable[myData$Date>=as.Date(staffAbsence$From[i], "%d/%m/%Y")& myData$Date<=as.Date(staffAbsence$To[i], "%d/%m/%Y")]-1
+        }
+        myData$StaffAvailable[myData$DayofWeek=="Saturday"]<- 0
+        myData$StaffAvailable[myData$DayofWeek=="Sunday"]<- 0
+        myData
       }
   })
   
@@ -400,6 +431,7 @@ server <- shinyServer(function(input, output, session) {
     #report[nrow(report),c(1:4,10)] <- NULL
     report <- sapply(report, as.character)
     report[is.na(report)] <- " "
+    report[,10] <- round(as.numeric(report[,10]), 2)
     report
   })
   
@@ -478,7 +510,7 @@ server <- shinyServer(function(input, output, session) {
         Summary2 <- merge(Summary2, FinanceValueCount, by="Subset1", all=T)
         Summary2 <- merge(Summary2, DiscountCount, by="Subset1", all=T)
       }else{
-        Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales[[input$dataset3[1]]], Sales, FUN = sum)
+        Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount, Sales$RenewalValue)~Sales[[input$dataset3[1]]], Sales, FUN = sum)
       }
       names(Summary2)[1]<-input$dataset3[1]
       names(Profit)[1]<-input$dataset3[1]
@@ -493,25 +525,25 @@ server <- shinyServer(function(input, output, session) {
       Profit <- merge(Profit,Summary2, by=input$dataset3[1], all.x=T)
       Profit[is.na(Profit)] <- 0
       if(input$dataset4 == "Mean"){
-        Profit[,5:8] <- round(Profit[,5:8]/Profit[,2], 2)
+        Profit[,5:9] <- round(Profit[,5:9]/Profit[,2], 2)
         Profit[,4] <- round(Profit[,4]/(as.numeric(Profit[,2])+as.numeric(Profit[,2])), 2)
       }
       if(input$dataset4 == "% Uptake"){
-        Profit[,5:8] <- round(Profit[,5:8]/Profit[,2]*100, 2)
+        Profit[,5:9] <- round(Profit[,5:9]/Profit[,2]*100, 2)
       }
-      Profit[,9] <- round((as.numeric(Profit[,3])/(as.numeric(Profit[,2])+as.numeric(Profit[,3])))*100, 2)
-      Profit$Y1Profit <- round((Profit[,4]+Profit[,5])*0.5, 2)
+      Profit[,10] <- round((as.numeric(Profit[,3])/(as.numeric(Profit[,2])+as.numeric(Profit[,3])))*100, 2)
+      #Profit$Y1Profit <- round((Profit[,4]+Profit[,5])*0.5, 2)
       Profit$Y2Profit <- round((Profit[,4]+Profit[,5])*0.25, 2)
-      names(Profit)[4:9]<-c(paste(input$dataset4, "of Profit", sep = " ") , paste(input$dataset4, "of Traffic Cost", sep = " "), paste(input$dataset4, " of Add-Ons", sep = " "), paste(input$dataset4, "of Finance", sep = " "), paste(input$dataset4, "of Discount", sep = " "), "Sales Cancellation Percentage")
+      names(Profit)[4:10]<-c(paste(input$dataset4, "of Profit", sep = " ") , paste(input$dataset4, "of Traffic Cost", sep = " "), paste(input$dataset4, " of Add-Ons", sep = " "), paste(input$dataset4, "of Finance", sep = " "), paste(input$dataset4, "of Discount", sep = " "),  paste(input$dataset4, "of Year 1 Renewal", sep = " "), "Sales Cancellation Percentage")
       if(input$dataset4 == "Count" | input$dataset4 == "% Uptake" ){
         #Profit[,c("Y1Profit", "Y2Profit")] <- NULL
-        Profit <- Profit[ -c(4, 10:11) ]
+        Profit <- Profit[ -c(4, 11:12) ]
       }
       if(input$dataset4 == "% Uptake"){
         names(Profit)[4]<-"% Paid Traffic"
       }
       if(input$dataset4 == "Mean"){
-        Profit <- Profit[ -c(9:11) ]
+        Profit <- Profit[ -c(10:11) ]
       }
       Profit2 <- aggregate(my_data2$TotalValue~my_data2[[input$dataset3[1]]], my_data2, FUN = sum)
       names(Profit2)[2]<-"Total Profit"
@@ -545,7 +577,7 @@ server <- shinyServer(function(input, output, session) {
         Summary2 <- merge(Summary2, FinanceValueCount, by=c("Subset1", "Subset2"), all=T)
         Summary2 <- merge(Summary2, DiscountCount, by=c("Subset1", "Subset2"), all=T)
       }else{
-        Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount)~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]], Sales, FUN = sum)
+        Summary2 <- aggregate(cbind(Sales$TrafficCost, Sales$AddOnValue, Sales$FinanceValue, Sales$Discount, Sales$RenewalValue)~Sales[[input$dataset3[1]]]+ Sales[[input$dataset3[2]]], Sales, FUN = sum)
       }
       names(Summary)[1]<-input$dataset3[1]
       names(Summary)[2]<-input$dataset3[2]
@@ -567,25 +599,25 @@ server <- shinyServer(function(input, output, session) {
       Profit <- merge(Profit,Summary2, by=c(input$dataset3[1],input$dataset3[2]), all.x=T)
       Profit[is.na(Profit)] <- 0
       if(input$dataset4 == "Mean"){
-        Profit[,6:9] <- round(Profit[,6:9]/Profit[,3], 2)
+        Profit[,6:10] <- round(Profit[,6:10]/Profit[,3], 2)
         Profit[,5] <- round(Profit[,5]/(as.numeric(Profit[,3])+as.numeric(Profit[,4])), 2)
       }
       if(input$dataset4 == "% Uptake"){
-        Profit[,6:9] <- round(Profit[,6:9]/Profit[,3]*100, 2)
+        Profit[,6:10] <- round(Profit[,6:9]/Profit[,3]*100, 2)
       }
-      Profit[,10] <- round((as.numeric(Profit[,4])/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))*100), 2)
-      Profit$Y1Profit <- round((Profit[,5]+Profit[,6])*0.5+abs(Profit[,9]*0.5*-0.5), 2)
+      Profit[,11] <- round((as.numeric(Profit[,4])/(as.numeric(Profit[,3])+as.numeric(Profit[,4]))*100), 2)
+      #Profit$Y1Profit <- round((Profit[,5]+Profit[,6])*0.5+abs(Profit[,9]*0.5*-0.5), 2)
       Profit$Y2Profit <- round((Profit[,5]+Profit[,6])*0.25+abs(Profit[,9]*0.25*-0.5), 2)
-      names(Profit)[5:10]<-c(paste(input$dataset4, "of Profit", sep = " ") , paste(input$dataset4, "of Traffic Cost", sep = " "), paste(input$dataset4, " of Add-Ons", sep = " "), paste(input$dataset4, "of Finance", sep = " "), paste(input$dataset4, "of Discount", sep = " "), "Sales Cancellation Percentage")
+      names(Profit)[5:11]<-c(paste(input$dataset4, "of Profit", sep = " ") , paste(input$dataset4, "of Traffic Cost", sep = " "), paste(input$dataset4, " of Add-Ons", sep = " "), paste(input$dataset4, "of Finance", sep = " "), paste(input$dataset4, "of Discount", sep = " "), paste(input$dataset4, "of Year 1 Renewal", sep = " "), "Sales Cancellation Percentage")
       if(input$dataset4 == "Count" | input$dataset4 == "% Uptake" ){
         #Profit[,c("Y1Profit", "Y2Profit")] <- NULL
-        Profit <- Profit[ -c(5, 11:12) ]
+        Profit <- Profit[ -c(5, 12) ]
       }
       if(input$dataset4 == "% Uptake"){
         names(Profit)[5]<-"% Paid Traffic"
       }
       if(input$dataset4 == "Mean"){
-        Profit <- Profit[ -c(10:12) ]
+        Profit <- Profit[ -c(11:13) ]
       }
       Profit2 <- aggregate(my_data2$TotalValue~my_data2[[input$dataset3[1]]]+my_data2[[input$dataset3[2]]], my_data2, FUN = sum)
       names(Profit2)[3]<-"Total Profit"
@@ -656,8 +688,8 @@ server <- shinyServer(function(input, output, session) {
         Profit[,7:10] <- round(Profit[,7:10]/Profit[,4]*100, 2)
       }
       Profit[,11] <- round(as.numeric((Profit[,5])/(as.numeric(Profit[,4])+as.numeric(Profit[,5])))*100, 2)
-      Profit$Y1Profit <- round((Profit[,6]+Profit[,7])*0.5+abs(Profit[,10]*0.5*-0.5), 2)
-      Profit$Y2Profit <- round((Profit[,6]+Profit[,7])*0.25+abs(Profit[,10]*0.25*-0.5), 2)
+      Profit$Y1Profit <- round((Profit[,6]+Profit[,7])*1.3+abs(Profit[,10]*1.3*-0.5), 2)
+      Profit$Y2Profit <- round((Profit[,6]+Profit[,7])*1.3+abs(Profit[,10]*1.3*-0.5), 2)
       names(Profit)[6:11]<-c(paste(input$dataset4, "of Profit", sep = " ") , paste(input$dataset4, "of Traffic Cost", sep = " "), paste(input$dataset4, " of Add-Ons", sep = " "), paste(input$dataset4, "of Finance", sep = " "), paste(input$dataset4, "of Discount", sep = " "), "Sales Cancellation Percentage")
       if(input$dataset4 == "Count" | input$dataset4 == "% Uptake" ){
         #Profit[,c("Y1Profit", "Y2Profit")] <- NULL
@@ -713,12 +745,17 @@ server <- shinyServer(function(input, output, session) {
     my_data10 <- data3()
     #my_data11 <- my_data10
     my_data10 <- subset(my_data10,  BTXPaydt != "")
-    
-    Staff <- aggregate(as.numeric(my_data10$TotalValue), by=list(Category=my_data10$Executive), FUN=sum)
+    my_data10 <- subset(my_data10,  BTXTrantype %in% input$show_vars)
+    my_data10 <- subset(my_data10,  PaymentMethod %in% input$show_vars1)
+    Staff <- aggregate(cbind(as.numeric(my_data10$TotalValue), as.numeric(my_data10$Discount), as.numeric(my_data10$BTXOrigdebt)), by=list(Category=my_data10$Executive), FUN=sum)
     Sales <- my_data10[ which(my_data10$Cancellation=='N'),]
     CountSales <- aggregate(as.numeric(Sales$TotalValue), by=list(Category=Sales$Executive), FUN=length)
     names(CountSales)[2]<-"Count"
     Staff$Sales <- CountSales$Count[match(Staff$Category, CountSales$Category)]
+    Finance <- my_data10[ which(my_data10$FinanceValue!=0),]
+    CountFinance <- aggregate(as.numeric(Finance$FinanceValue), by=list(Category=Finance$Executive), FUN=length)
+    names(CountFinance)[2]<-"Count"
+    Staff$Finance <- CountFinance$Count[match(Staff$Category, CountFinance$Category)]
     Cancellations <- my_data10[ which(my_data10$Cancellation!='N'),]
     if(nrow(Cancellations) >0){
       CountCancellations <- aggregate(as.numeric(Cancellations$TotalValue), by=list(Category=Cancellations$Executive), FUN=length)
@@ -727,21 +764,23 @@ server <- shinyServer(function(input, output, session) {
       Staff$Cancellations <- CountCancellations$Count[match(Staff$Category, CountCancellations$Category)]
     } else{Staff$Cancellations <- 0}
     Staff[is.na(Staff)] <- 0
-    Staff[,5] <- round(as.numeric(Staff[,4])/(as.numeric(Staff[,3])+as.numeric(Staff[,4]))*100, 2)
-    Staff[,6] <- round(Staff[,2]/(as.numeric(Staff[,3])+as.numeric(Staff[,4])), 2)
     AddOnCount1 <- subset(Sales, Sales$AddOnCount != 0)
     if(nrow(AddOnCount1) >0){
       CountAddOns <- aggregate(as.numeric(AddOnCount1$AddOnCount), by=list(Category=AddOnCount1$Executive), FUN=sum)
       names(CountAddOns)[2]<-"Count"
       Staff$AddOns <- CountAddOns$Count[match(Staff$Category, CountAddOns$Category)]
     } else{Staff$AddOns <- 0}
+    Staff[,9] <- round(as.numeric(Staff[,7])/(as.numeric(Staff[,5])+as.numeric(Staff[,7]))*100, 2)
+    Staff[,10] <- round(Staff[,2]/(as.numeric(Staff[,5])+as.numeric(Staff[,7])), 2)
     #    Profit$CancellationPercentage <- as.numeric(Profit$Cancellations)/(as.numeric(Profit$Sales)+as.numeric(Profit$Cancellations))
     Staff[,2] <- round(Staff[,2], 2)
-    names(Staff)[1]<-"Executive"
+    #names(Staff)[1]<-"Executive"
     names(Staff)[2]<-"Total Profit"
-    names(Staff)[5]<-"Sales Cancellation Percentage"
-    names(Staff)[6]<-"Average Profit"
-    names(Staff)[7]<-"Add-Ons"
+    names(Staff)[3]<-"Total Discount"
+    names(Staff)[4]<-"Total Premium (BTXOrigdebt)"
+    names(Staff)[8]<-"Add-Ons"
+    names(Staff)[9]<-"Sales Cancellation Percentage"
+    names(Staff)[10]<-"Average Profit"
     Staff <- Staff[order(Staff[1]),]
     Staff[is.na(Staff)] <- 0
     Staff
@@ -796,10 +835,25 @@ server <- shinyServer(function(input, output, session) {
           type = "bar"
         )}
       else if(length(input$dataset3) == 1){
-        p <- plot_ly(data8(), x = ~data8()[,1], y = ~data8()[,4], type = 'scatter', mode = 'lines', name = 'Gross Profit') %>%
-          add_trace(y = ~data8()[,10], name = 'Y1Profit', mode = 'lines+markers') %>%
-          add_trace(y = ~data8()[,11], name = 'Y2Profit', mode = 'lines+markers') %>%
-          layout(yaxis = list(title = 'Sum'), xaxis = list(title = ""))
+        
+        p <- plot_ly(data8(), x = ~data8()[,1], color = I("black")) %>%
+          add_markers(y = ~data8()[,9], name = "Year 1 Value") %>%
+          add_lines(y = ~fitted(loess(data8()[,9] ~ as.numeric(rownames(data8())))),
+                    line = list(color = '#07A4B5'),
+                    name = "Smoothed Year 1 Estimate", showlegend = TRUE) %>%
+          layout(xaxis = list(title = ''),
+                 yaxis = list(title = 'Profit'),
+                 legend = list(x = 0.80, y = 0.90))
+        
+        
+        # p <- plot_ly(data8(), x = ~data8()[,1], y = ~data8()[,4], type = 'scatter', mode = 'lines', name = 'Gross Profit') %>%
+        #   add_trace(y = ~data8()[,10], name = 'Y1Profit', mode = 'lines+markers') %>%
+        #   add_trace(y = ~data8()[,11], name = 'Y2Profit', mode = 'lines+markers') %>%
+        #   # add_lines(y = ~fitted(loess(data8()[,10] ~ data8()[,1])),
+        #   #           line = list(color = '#07A4B5'),
+        #   #           name = "Loess Smoother", showlegend = TRUE) %>%
+        #   #add_trace(y = ~data8()[,11], name = 'Y1 Trend', mode = 'lines+markers') %>%
+        #   layout(yaxis = list(title = 'Sum'), xaxis = list(title = ""))
         p
       } else if(length(input$dataset3) > 1){
         plot <- data()

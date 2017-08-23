@@ -13,6 +13,8 @@ PCLFinance <- read.csv("stats.csv", stringsAsFactors =FALSE, encoding="latin1")
 setwd("//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS")
 
 # Copy Additional Report
+setwd("C:/Users/alan.mcknight/Dropbox")
+file.remove("stats.csv")
 current.folder <- "//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS/ADDITIONAL REPORT - MIS, ALPS"
 new.folder <- setwd("C:/Users/alan.mcknight/Dropbox")
 list.of.files <- list.files(current.folder, "stats.csv$", full.names = TRUE)
@@ -22,6 +24,12 @@ file.copy(list.of.files, new.folder, overwrite = T)
 current.folder <- "//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS/QUOTE SOURCES"
 new.folder <- setwd("C:/Users/alan.mcknight/Dropbox")
 list.of.files <- list.files(current.folder, "apricot-ogi-car.csv$", full.names = TRUE)
+file.copy(list.of.files, new.folder, overwrite = T)
+
+# Copy phoneStats Report
+current.folder <- "//DISKSTATION/ApricotShare/Branch/ALL DAILY STATISTICS/CALL CENTRE STATS"
+new.folder <- setwd("C:/Users/alan.mcknight/Dropbox")
+list.of.files <- list.files(current.folder, "phoneStats.csv$", full.names = TRUE)
 file.copy(list.of.files, new.folder, overwrite = T)
 
 ##Update to original policy payment date.
@@ -93,8 +101,8 @@ PolicySales$Source[grepl("APRUS-", PolicySales$ECWebref, ignore.case=FALSE)] <- 
 PolicySales[PolicySales$BTXTrantype == "Renewal" | PolicySales$BTXTrantype == "Pending Renewal" , "TrafficCost"] <- 0
 
 ##### Assign Executive & Payment Type
-code = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-Executive = c("Mark", "Audrey", "Aine", "Louise", "Megan", "Elaine", "Susan", "Stephen", "Admin User", "Andrew")
+code = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+Executive = c("Mark", "Audrey", "Aine", "Louise", "Megan", "Elaine", "Susan", "Stephen", "Admin User", "Andrew", "Chris")
 execRef <- data.frame(code, Executive)
 code2 = c(1, 2, 3, 4, 5, 6, 7, 8, 9, "B", "C", "D", "J", "M", "O")
 Payment = c("Mastercard", "Visa", "Visa Delta", "Visa Electron", "Maestro", "Credit Card 6", "Credit Card 7", "Credit Card 8", "Credit Card 9", "Bank Credit", "Cheque", "Paid Direct", "Journal", "Money/Cash", "Bank-Other")
@@ -106,6 +114,7 @@ PolicySales$Executive <- as.character(PolicySales$Executive)
 PolicySales$Executive[is.na(PolicySales$Executive)] <- "Not Assigned"
 PolicySales$PaymentMethod <- as.character(PolicySales$Payment)
 PolicySales$PaymentMethod[is.na(PolicySales$Payment)] <- "Not Assigned"
+PolicySales$PaymentMethod[grepl("BUYO", PolicySales$BPYNotes2, ignore.case=FALSE)] <- "Buy Online"
 
 ##Create additional Policy Sales columns
 PolicySales$Cancellation <- "N"
@@ -192,10 +201,12 @@ Sales <- read.csv("ExistingApricotSales.csv", stringsAsFactors = F)
 #h <- read.csv("AllSalesReport-2017-03.csv", stringsAsFactors =FALSE)
 #i <- read.csv("AllSalesReport-2017-04.csv", stringsAsFactors =FALSE)
 #j <- read.csv("AllSalesReport-2017-05.csv", stringsAsFactors =FALSE)
-#Sales <- rbind(a, b, c, d, e, f, g, h, i, j)
-#Sales <- subset(Sales, COMPANY == "Apricot Agg (OGI standalone)")
+#k <- read.csv("AllSalesReport-2017-06.csv", stringsAsFactors =FALSE)
+j <- read.csv("AllSalesReport-2017-07.csv", stringsAsFactors =FALSE)
+Sales <- rbind(Sales, j)
+Sales <- subset(Sales, COMPANY == "Apricot Agg (OGI standalone)")
 #####Lines below used to update and save processing time. 
-#write.csv(Sales, "ExistingApricotSales.csv", row.names=FALSE)
+write.csv(Sales, "ExistingApricotSales.csv", row.names=FALSE)
 Sales$POSTCODE <- toupper(Sales$POSTCODE)
 
 Sales$Match <- paste(Sales$BIRTH.DATE, Sales$POSTCODE, Sales$EMAIL.ADDRESS)
@@ -210,7 +221,7 @@ joined$DateDifference <- as.numeric(joined$DateDifference)
 joined$DateDifference[joined$DateDifference < 0] <- 365
 joined <- joined[order(joined$DateDifference),] 
 joined <- joined[!duplicated(joined[c("BTXPolref","BTXDatecreated", "BTXOrigdebt", "BTXPaydt")]),]
-joined$Match.x <- NULL
+#joined$Match.x <- NULL
 joined$Match.y <- NULL
 joined$distance <- NULL
 joined$DateDifference <- NULL
@@ -225,10 +236,12 @@ Quotes <- read.csv("ExistingSalesQuotes.csv", stringsAsFactors =FALSE)
 #Quotes2 <- read.csv("Quotes01.csv", stringsAsFactors =FALSE)
 #Quotes3 <- read.csv("Quotes02.csv", stringsAsFactors =FALSE)
 #Quotes4 <- read.csv("Quotes03.csv", stringsAsFactors =FALSE)
-#Quotes5 <- read.csv("Quotes04.csv", stringsAsFactors =FALSE)
-Quotes6 <- read.csv("Quotes05.csv", stringsAsFactors =FALSE)
-Quotes7 <- read.csv("Quotes06.csv", stringsAsFactors =FALSE)
-Quotes <- rbind(Quotes, Quotes6, Quotes7)
+#Quotes4 <- read.csv("Quotes04.csv", stringsAsFactors =FALSE)
+#Quotes5 <- read.csv("Quotes05.csv", stringsAsFactors =FALSE)
+#Quotes6 <- read.csv("Quotes06.csv", stringsAsFactors =FALSE)
+Quotes7 <- read.csv("Quotes07.csv", stringsAsFactors =FALSE)
+Quotes8 <- read.csv("Quotes08.csv", stringsAsFactors =FALSE)
+Quotes <- rbind(Quotes, Quotes7, Quotes8)
 
 a <- as.Date(Quotes$Quote.Date,format="%d/%m/%Y") # Produces NA when format is not "%m/%d/%Y"
 b <- as.Date(Quotes$Quote.Date,format="%Y-%m-%d") # Produces NA when format is not "%d.%m.%Y"
@@ -239,7 +252,28 @@ Quotes$Quote.Date <- a # Put it back in your dataframe
 #ExistingSalesQuotes <- Quotes[which(Quotes$Date.Of.Birth %in% DailySales$BCMDob & Quotes$Post.Code %in% DailySales$BCMPcode), ]
 #write.csv(ExistingSalesQuotes, "ExistingSalesQuotes.csv", row.names=FALSE)
 
-DailySales <- merge(DailySales, Quotes, by.x=c("BCMDob", "BCMPcode"), by.y=c("Date.Of.Birth", "Post.Code"), all.x=TRUE)
+Quotes <- Quotes[rowSums(Quotes[,(which( colnames(Quotes)=="Site.Name.1" )):ncol(Quotes) ] == "Apricot Agg (OGI standalone)", na.rm = TRUE) > 0L,]
+Quotes$Match <- paste(Quotes$Date.Of.Birth, Quotes$Post.Code, Quotes$Email.Address)
+
+Quotes <- Quotes[Quotes$Post.Code %in% DailySales$BCMPcode, ]
+
+joined <- DailySales %>%
+  stringdist_left_join(Quotes, by = c(Match.x = "Match"), max_dist = 5,
+                       distance_col = "distance")
+joined$DateDifference <- joined$BTXDatecreated - joined$Quote.Date
+joined$DateDifference <- as.numeric(joined$DateDifference)
+joined$DateDifference[joined$DateDifference < 0] <- 365
+joined <- joined[order(joined$DateDifference),] 
+joined <- joined[!duplicated(joined[c("BTXPolref","BTXDatecreated", "BTXOrigdebt", "BTXPaydt")]),]
+joined$Match.x <- NULL
+joined$Match <- NULL
+joined$distance <- NULL
+joined$DateDifference <- NULL
+
+DailySales <- joined
+
+#DailySales <- merge(DailySales, Quotes, by.x=c("BCMDob", "BCMPcode"), by.y=c("Date.Of.Birth", "Post.Code"), all.x=TRUE)
+
 DailySales[DailySales$BTXPoltype != "PC",][,which( colnames(DailySales)=="Quote.Reference" ):which( colnames(DailySales)=="Site.Name.110" )] <- NA
 DailySales <- DailySales[!is.na(DailySales$BTXPolref),]
 ##Update daily sales for sales matching Quotezone quotes, previously unmatched.
@@ -387,6 +421,33 @@ Master <- data.frame(Master[1:(bspot-1)], BTXOrigdebt.Range = cut(as.numeric(Mas
 colnames(Master) <- sub('[.]x$', '', colnames(Master))
 colnames(Master) <- sub('[.]y$', '', colnames(Master))
 Master$Renewal <- NULL
+
+### Calculate renewal values 
+Renewals <- Master[Master$BTXDtraised < (Today -379) & Master$BTXDtraised > (Today -469) & Master$Cancellation == "N", ]
+Renewals2 <- Master[Master$BTXDtraised < (Today) & Master$BTXDtraised > (Today - 134), ]
+RenewalsPerProduct <- aggregate(TotalValue~Product, data=Renewals, sum, na.rm=TRUE)
+RenewalsPerProductCount <- aggregate(TotalValue~Product, data=Renewals, length)
+RenewalsPerProduct <- merge(RenewalsPerProduct, RenewalsPerProductCount, by = "Product")
+Renewals2 <- Renewals2[ Renewals2$UserID %in% Renewals$UserID ,]
+Renewals2$OriginalProduct <- Renewals$Product[match(Renewals2$UserID,Renewals$UserID)]
+df_dups <- Renewals2[, 1: (ncol(Renewals2)-1)]
+Renwals2 <- Renewals2[!duplicated(df_dups),]
+Renewals2PerProduct <- aggregate(TotalValue~OriginalProduct, data=Renewals2, sum, na.rm=TRUE)
+Renewals3 <- merge(RenewalsPerProduct,Renewals2PerProduct,by.x="Product" , by.y="OriginalProduct")
+Renewals3$RenewalMultiplier <- Renewals3$TotalValue / Renewals3$TotalValue.x
+RenewalRatio <- sum(Renewals3$TotalValue)/sum(Renewals3$TotalValue.x)
+TotalValue <- sum(Renewals3$TotalValue.x)
+TotalValue <- sum(Renewals3$TotalValue)
+Renewals3$RenewalMultiplier <- (Renewals3$RenewalMultiplier * Renewals3$TotalValue.y + RenewalRatio)/(Renewals3$TotalValue.y+1)
+Total<-data.frame("Total", sum(Renewals3$TotalValue.x), sum(Renewals3$TotalValue.y), sum(Renewals3$TotalValue), RenewalRatio)
+names(Total)<- names(Renewals3)
+Renewals3 <- rbind(Renewals3, Total)
+#write.csv(Renewals3, "renewalRatios.csv", row.names= FALSE, sep=",")
+
+Master <- data.frame(Master[1:(bspot-1)], RenewalValue = RenewalRatio, Master[(bspot):ncol(Master)])
+Master$RenewalValue <- (ifelse(Master$Cancellation == "N", Renewals3$RenewalMultiplier[match(Master$Product,Renewals3$Product)], 0))
+Master$RenewalValue[is.na(Master$RenewalValue)] <- 0
+Master$RenewalValue <- Master$RenewalValue * Master$TotalValue
 
 write.table(Master, "ApricotSales.csv", row.names= FALSE, sep=",")
 setwd("C:/Users/alan.mcknight/Dropbox")
