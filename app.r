@@ -89,7 +89,10 @@ tabPanel("Executive Performance",
          htmlOutput("selectUI3"),
          selectInput("plotFilter2", "Select Performance Metric", choices = c("Add-Ons", "Cancellations", "Sales", "Total Profit"), selected = "Sales"),
          plotlyOutput("dailyPlot10"),
-         dataTableOutput(outputId ="my_output_data10")),
+         dataTableOutput(outputId ="my_output_data10"),
+         downloadButton("downloadData1", "Download Sales Report"), 
+         br(),
+         br()),
 tabPanel(title=HTML("<li><a href='https://docs.google.com/spreadsheets/d/17UgYlEAt5rChM9_diD5833MtiBviLuTtfCKFC_gt_Ng/edit#gid=0' target='_blank'>Updates & Suggestions")), 
 tabPanel(title=HTML("<li><a href='https://docs.google.com/spreadsheets/d/1Ljro5DE7ckqMBnUk2UNLJ6WPnpM1qb0OFqRdP-sxk6I/edit?usp=sharing' >Email Tracker"))
 )
@@ -117,8 +120,8 @@ server <- shinyServer(function(input, output, session) {
   
   #my_data <- read.csv("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?dl=1", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   
-  my_data_masked  <- read.csv(url("https://www.dropbox.com/s/t949ydw2al7esy5/ApricotSalesMasked.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
-  my_data_full  <- read.csv(url("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  #my_data_masked  <- read.csv(url("https://www.dropbox.com/s/t949ydw2al7esy5/ApricotSalesMasked.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
+  #my_data_full  <- read.csv(url("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   
   #my_data_masked <- read.csv("ApricotSalesMasked.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   #my_data_full <- read.csv("ApricotSales1.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
@@ -126,7 +129,7 @@ server <- shinyServer(function(input, output, session) {
   
   data_Masked <- reactive({
   if(user_details()$id == "115715313375704491860"){
-    my_data <- my_data_masked
+    my_data <- read.csv(url("https://www.dropbox.com/s/t949ydw2al7esy5/ApricotSalesMasked.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     #my_data  <- read.csv(url("https://www.dropbox.com/s/t949ydw2al7esy5/ApricotSalesMasked.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     # 
     # dl_from_dropbox("ApricotSalesMasked.csv", "t949ydw2al7esy5")
@@ -134,14 +137,14 @@ server <- shinyServer(function(input, output, session) {
     # 
     # #my_data <- drop_read_csv("ApricotSalesMasked.csv" , header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
   }else if(user_details()$id %in% salesStaff){
-    my_data <- my_data_full
+    my_data <- read.csv(url("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     #my_data  <- read.csv(url("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     # dl_from_dropbox("ApricotSales1.csv", "zy75gjfkv8591nn")
     # my_data <- read.csv("ApricotSales1.csv", header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     # #my_data <- drop_read_csv("ApricotSales1.csv" , header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     my_data$TotalValue <- 0
   }else{
-    my_data <- my_data_full
+    my_data <- read.csv(url("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     #endorsements <- read.csv(url("https://www.dropbox.com/s/siqmo27yg0dbpc6/stats.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     #my_data  <- read.csv(url("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
     #my_data  <- read.csv(url("https://www.dropbox.com/s/zy75gjfkv8591nn/ApricotSales1.csv?raw=1"), header = TRUE, stringsAsFactors =FALSE, fileEncoding="latin1")
@@ -277,31 +280,33 @@ server <- shinyServer(function(input, output, session) {
         my_data <- data_Masked()
         USwitchData <- my_data[grep("APRUS", my_data$ECWebref),]
         USwitchData <- USwitchData[USwitchData$BTXTrantype == "New Business",]
-        SalesData<- subset(USwitchData, USwitchData$BTXDatecreated >= input$dateRange1[1] & USwitchData$BTXDatecreated <= input$dateRange1[2])
+        SalesData <- subset(USwitchData, USwitchData$BTXDatecreated >= input$dateRange1[1] & USwitchData$BTXDatecreated <= input$dateRange1[2])
+        SalesData
         CancellationData <- subset(USwitchData, USwitchData$Cancellation != "N")
         CancellationData <- subset(CancellationData, as.Date(CancellationData$CancellationDate, "%Y-%m-%d") >= input$dateRange1[1] & as.Date(CancellationData$CancellationDate, "%Y-%m-%d") <= input$dateRange1[2])
+
         USwitchData <- rbind(SalesData, CancellationData)
         USwitchData <- USwitchData [!duplicated(USwitchData ), ]
-        
+         
         USwitchData$recordtype <- "Sale"
         USwitchData$salesmonth <- cut(as.Date(USwitchData$BTXDtraised), "month")
         USwitchData$brand <- "Apricot"
         USwitchData$surname <- "NA"
-        
+
         USwitchData1 <- merge(USwitchData, Data1, by = "BTXPolref", all.x=TRUE)
-        
+
         USwitchData1 <- USwitchData1[c("recordtype", "salesmonth", "brand", "BCMEmail.x", "BCMPcode.x", "BCMName", "surname", "BCMDob.x", "CFReg", "BTXDtraised.x", "ECWebref.x", "BTXPolref", "BPYNotes2.x", "BTXOrigdebt.x", "BTXDatecreated.x", "Cancellation", "CancellationDate", "FinanceValue", "BTXInsurer.x")]
         USwitchData1$BTXDatecreated.x <- pmin(as.Date(USwitchData1$BTXDtraised.x, "%Y-%m-%d"), as.Date(USwitchData1$BTXDatecreated.x,"%Y-%m-%d"))
         USwitchData1$surname <- word(USwitchData1$BCMName, -1)
         USwitchData1$BCMName <- word(USwitchData1$BCMName, -2)
+        
 
         colnames(USwitchData1) <- c("recordtype", "salesmonth", "brand", "emailaddress", "postcode", "firstname", "surname", "dob", "carregistrationnumber", "policystartdate", "policyquotereference",	"providerquotereference",	"purchasechannel",	"premium",	"policypurchasedate",	"cancellationreason",	"cancellationeffectivedate",	"purchasetype",	"insurerunderwritingpolicy")
         USwitchData1 <- USwitchData1[!duplicated(USwitchData1), ]
-
         USwitchData1$cancellationreason[USwitchData1$cancellationreason == "N"] <- ""
         USwitchData1$cancellationeffectivedate <- as.character(USwitchData1$cancellationeffectivedate)
         USwitchData1$cancellationeffectivedate[USwitchData1$cancellationreason == ""] <- ""
-
+        
         USwitchData1$purchasechannel <- sub(".*BUYO.*", "Online", USwitchData1$purchasechannel)
         USwitchData1$purchasechannel[USwitchData1$purchasechannel != "Online"] <- "Telephone"
         #USwitchCancellations$cancellationreason[USwitchCancellations$cancellationreason != ""] <- ""
@@ -310,7 +315,7 @@ server <- shinyServer(function(input, output, session) {
         USwitchData1$purchasetype[USwitchData1$purchasetype != "0"] <- "Monthly"
         USwitchData1$purchasetype[USwitchData1$purchasetype == "0"] <- "Annual"
         USwitchCancellations <- USwitchData1[USwitchData1$cancellationreason == "NTU",]
-        USwitchCancellations$cancellationreason <- ""
+        if(nrow(USwitchCancellations)>0){USwitchCancellations$cancellationreason <- ""}
         USwitchData1 <- rbind(USwitchData1, USwitchCancellations)
         USwitchData1 <- USwitchData1[order(USwitchData1$policystartdate),]
         USwitchData1
@@ -617,7 +622,7 @@ server <- shinyServer(function(input, output, session) {
         Profit[is.na(Profit)] <- 0
         if(input$dataset4 == "Mean"){
           Profit[,5:9] <- round(Profit[,5:9]/Profit[,2], 2)
-          Profit[,4] <- round(Profit[,4]/(as.numeric(Profit[,2])+as.numeric(Profit[,2])), 2)
+          Profit[,4] <- round(Profit[,4]/(as.numeric(Profit[,2])+as.numeric(Profit[,3])), 2)
         }
         if(input$dataset4 == "% Uptake"){
           Profit[,5:9] <- round(Profit[,5:9]/Profit[,2]*100, 2)
@@ -977,6 +982,13 @@ server <- shinyServer(function(input, output, session) {
         if(user_details()$id %in% managers){
         write.csv(data1(), file, row.names = FALSE)
       }else{write.csv(contactAdmin, file, row.names = FALSE)}}
+    )
+    
+    output$downloadData1 <- downloadHandler(
+      filename = function() { 'SalesData.csv' }, content = function(file) {
+        if(user_details()$id %in% managers){
+          write.csv(data1(), file, row.names = FALSE)
+        }else{write.csv(contactAdmin, file, row.names = FALSE)}}
     )
     
     output$reportDownload <- downloadHandler(
